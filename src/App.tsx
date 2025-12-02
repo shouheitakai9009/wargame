@@ -1,6 +1,6 @@
 import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { store } from "./states/store";
+import { store } from "./states";
 import LandingPage from "./routes/LandingPage";
 import BattlePage from "./routes/BattlePage";
 import "./App.css";

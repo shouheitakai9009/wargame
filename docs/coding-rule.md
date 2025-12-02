@@ -4,6 +4,267 @@
 
 context7 mcp を使用し、コンテキストにあった公式ドキュメントを参照し、必ずベストプラクティスを使い、アンチパターンを避けること
 
+### 具体的な手順
+
+1. 新しいライブラリやフレームワークの機能を使う前に、必ず公式ドキュメントを参照する
+2. 公式が推奨するパターンに従う
+3. 公式が非推奨としているパターンは絶対に使わない
+
+### ✅ 良い例
+
+```tsx
+// React 18のuseTransitionを使用する際、公式ドキュメントを参照してベストプラクティスに従う
+import { useTransition } from "react";
+
+function SearchResults() {
+  const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 緊急性の低い更新をuseTransitionでラップ
+    startTransition(() => {
+      setQuery(e.target.value);
+    });
+  };
+
+  return (
+    <>
+      <input onChange={handleChange} />
+      {isPending && <Spinner />}
+      <Results query={query} />
+    </>
+  );
+}
+```
+
+### ❌ 悪い例
+
+```tsx
+// 公式ドキュメントを読まずに、推測で実装したり古いパターンを使う
+import { useState, useEffect } from "react";
+
+function SearchResults() {
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // useTransitionを使うべき場面で手動でloading状態を管理
+    setLoading(true);
+    setTimeout(() => {
+      setQuery(e.target.value);
+      setLoading(false);
+    }, 0);
+  };
+
+  return (
+    <>
+      <input onChange={handleChange} />
+      {loading && <Spinner />}
+      <Results query={query} />
+    </>
+  );
+}
+```
+
+## [MUST] カラーコードや CSS 変数は@shadcn/ui の Theming に従う
+
+https://ui.shadcn.com/docs/theming を参考にする
+
+shadcn/ui はカラーパレットを CSS 変数で管理しています。直接カラーコードを指定せず、必ずテーマの CSS 変数を使用してください。
+
+### ✅ 良い例
+
+```tsx
+// shadcn/uiのテーマ変数を使用
+function ArmyCard({ army }: { army: Army }) {
+  return (
+    <div className="bg-card text-card-foreground border border-border rounded-lg p-4">
+      <h3 className="text-primary font-bold">{army.name}</h3>
+      <p className="text-muted-foreground">{army.description}</p>
+      <button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        選択
+      </button>
+    </div>
+  );
+}
+
+// カスタムコンポーネントでもCSS変数を使用
+function StatusBadge({ status }: { status: "active" | "inactive" }) {
+  return (
+    <span
+      className={
+        status === "active"
+          ? "bg-green-500/10 text-green-700 dark:text-green-400"
+          : "bg-muted text-muted-foreground"
+      }
+    >
+      {status}
+    </span>
+  );
+}
+```
+
+### ❌ 悪い例
+
+```tsx
+// 直接カラーコードを指定（テーマに対応しない）
+function ArmyCard({ army }: { army: Army }) {
+  return (
+    <div
+      style={{
+        backgroundColor: "#ffffff", // ダークモードで対応できない
+        color: "#000000",
+        border: "1px solid #e5e5e5",
+      }}
+    >
+      <h3 style={{ color: "#0070f3" }}>{army.name}</h3>
+      <p style={{ color: "#666666" }}>{army.description}</p>
+      <button
+        style={{
+          backgroundColor: "#0070f3",
+          color: "#ffffff",
+        }}
+      >
+        選択
+      </button>
+    </div>
+  );
+}
+
+// Tailwindの色を直接使用（テーマとの一貫性がない）
+function StatusBadge({ status }: { status: "active" | "inactive" }) {
+  return (
+    <span
+      className={
+        status === "active"
+          ? "bg-blue-500 text-white"
+          : "bg-gray-300 text-black"
+      }
+    >
+      {status}
+    </span>
+  );
+}
+```
+
+## [MUST] designs レベルのコンポーネントの追加・編集時に@shadcn/ui が使用できないか必ず見る
+
+shadcn mcp をインストール済みなので、mcp を介しコンポーネントを探索して下さい。
+
+### 手順
+
+1. 新しいコンポーネントが必要になったら、まず shadcn/ui に同等のコンポーネントがないか確認
+2. shadcn/ui にある場合は、それをインストールして使用
+3. ない場合のみ、カスタムコンポーネントを作成
+
+### ✅ 良い例
+
+```tsx
+// ボタンコンポーネントが必要な場合、shadcn/uiのButtonを使用
+import { Button } from "@/designs/ui/button";
+
+function ArmyActions({
+  onAttack,
+  onDefend,
+}: {
+  onAttack: () => void;
+  onDefend: () => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <Button variant="default" onClick={onAttack}>
+        攻撃
+      </Button>
+      <Button variant="outline" onClick={onDefend}>
+        防御
+      </Button>
+    </div>
+  );
+}
+
+// ダイアログが必要な場合、shadcn/uiのDialogを使用
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/designs/ui/dialog";
+
+function ArmyDetail({ army }: { army: Army }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">詳細を見る</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{army.name}</DialogTitle>
+          <DialogDescription>{army.description}</DialogDescription>
+        </DialogHeader>
+        <ArmyStats stats={army.stats} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+### ❌ 悪い例
+
+```tsx
+// shadcn/uiに同等のコンポーネントがあるのに、車輪の再発明をする
+function CustomButton({
+  children,
+  variant = "default",
+  onClick,
+}: {
+  children: React.ReactNode;
+  variant?: "default" | "outline";
+  onClick: () => void;
+}) {
+  const baseStyles = "px-4 py-2 rounded font-medium";
+  const variantStyles =
+    variant === "default"
+      ? "bg-blue-500 text-white hover:bg-blue-600"
+      : "border border-gray-300 hover:bg-gray-100";
+
+  return (
+    <button className={`${baseStyles} ${variantStyles}`} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+// アクセシビリティやフォーカス管理が不十分な独自ダイアログ
+function CustomDialog({
+  isOpen,
+  onClose,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+      onClick={onClose} // 背景クリックでしか閉じられない
+    >
+      <div
+        className="bg-white p-6 rounded-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+        {/* ESCキーでの閉じる機能がない、フォーカストラップもない */}
+      </div>
+    </div>
+  );
+}
+```
+
 ## [MUST] state 管理は基本的に redux で行う
 
 機能を横断しない UI の状態（例：フォーカス、ホバー等）は、ローカルステートで持つ方が効率が良い場合に限り、ローカルステートで保持する。
@@ -130,6 +391,161 @@ function ParentComponent() {
   );
 }
 ```
+
+## [MUST] redux action の命名はユーザ操作を直接表す
+
+Action 名は「何が起きたか」をユーザーの視点から表現します。技術的な状態変更ではなく、ビジネスロジックやユーザーの意図を反映した命名にしてください。
+
+### 命名の基本原則
+
+1. **動詞で始める**: `createArmy`, `moveArmy`, `attackEnemy` など
+2. **ユーザーの意図を表現**: `setPosition` ではなく `moveArmy`
+3. **過去形ではなく現在形**: `armyMoved` ではなく `moveArmy`
+4. **具体的に**: `update` ではなく `upgradeTroop`, `healSoldier` など
+
+### ✅ 良い例
+
+```typescript
+// ユーザーの操作を直接表現
+const gameSlice = createSlice({
+  name: "game",
+  initialState,
+  reducers: {
+    // ✅ ユーザーが戦闘を開始する
+    startBattle: (state) => {
+      state.phase = "battle";
+      state.turn = 1;
+    },
+
+    // ✅ ユーザーが軍を移動する
+    moveArmy: (
+      state,
+      action: PayloadAction<{ armyId: string; position: Position }>
+    ) => {
+      const army = state.armies.find((a) => a.id === action.payload.armyId);
+      if (army) {
+        army.position = action.payload.position;
+      }
+    },
+
+    // ✅ ユーザーが敵を攻撃する
+    attackEnemy: (
+      state,
+      action: PayloadAction<{ attackerId: string; targetId: string }>
+    ) => {
+      const attacker = state.troops.find(
+        (t) => t.id === action.payload.attackerId
+      );
+      const target = state.troops.find((t) => t.id === action.payload.targetId);
+      if (attacker && target) {
+        target.health -= attacker.attack;
+      }
+    },
+
+    // ✅ ユーザーが兵を配置する
+    deploySoldier: (
+      state,
+      action: PayloadAction<{ type: SoldierType; position: Position }>
+    ) => {
+      state.soldiers.push({
+        id: generateId(),
+        type: action.payload.type,
+        position: action.payload.position,
+      });
+    },
+
+    // ✅ ユーザーが軍の向きを変更する
+    rotateArmy: (
+      state,
+      action: PayloadAction<{ armyId: string; direction: Direction }>
+    ) => {
+      const army = state.armies.find((a) => a.id === action.payload.armyId);
+      if (army) {
+        army.direction = action.payload.direction;
+      }
+    },
+
+    // ✅ ユーザーがターンを終了する
+    endTurn: (state) => {
+      state.turn += 1;
+      state.currentPlayer = state.currentPlayer === "player" ? "ai" : "player";
+    },
+  },
+});
+```
+
+### ❌ 悪い例
+
+```typescript
+// 技術的な状態変更を表現している（ユーザーの意図が不明）
+const gameSlice = createSlice({
+  name: "game",
+  initialState,
+  reducers: {
+    // ❌ 何をしたいのか不明（戦闘を開始するのか？）
+    setPhase: (state, action: PayloadAction<string>) => {
+      state.phase = action.payload;
+    },
+
+    // ❌ 技術的な状態変更（ユーザーは「軍を移動する」と考えている）
+    setArmyPosition: (
+      state,
+      action: PayloadAction<{ armyId: string; position: Position }>
+    ) => {
+      const army = state.armies.find((a) => a.id === action.payload.armyId);
+      if (army) {
+        army.position = action.payload.position;
+      }
+    },
+
+    // ❌ 過去形を使用している
+    armyMoved: (
+      state,
+      action: PayloadAction<{ armyId: string; position: Position }>
+    ) => {
+      const army = state.armies.find((a) => a.id === action.payload.armyId);
+      if (army) {
+        army.position = action.payload.position;
+      }
+    },
+
+    // ❌ 抽象的すぎる（何をupdateするのか？）
+    updateData: (state, action: PayloadAction<any>) => {
+      // ...
+    },
+
+    // ❌ 技術的なCRUD操作（ユーザーの意図が不明）
+    addItem: (state, action: PayloadAction<Soldier>) => {
+      state.soldiers.push(action.payload);
+    },
+
+    // ❌ 単なるsetter（ユーザーの操作を表現していない）
+    setDirection: (
+      state,
+      action: PayloadAction<{ armyId: string; direction: Direction }>
+    ) => {
+      const army = state.armies.find((a) => a.id === action.payload.armyId);
+      if (army) {
+        army.direction = action.payload.direction;
+      }
+    },
+  },
+});
+```
+
+### 良い命名パターン集
+
+| ユーザーの操作       | ✅ 良い命名      | ❌ 悪い命名                         |
+| -------------------- | ---------------- | ----------------------------------- |
+| 戦闘を開始する       | `startBattle`    | `setBattleState`, `setPhase`        |
+| 軍を移動する         | `moveArmy`       | `setArmyPosition`, `updatePosition` |
+| 敵を攻撃する         | `attackEnemy`    | `decreaseHealth`, `updateTarget`    |
+| 兵を配置する         | `deploySoldier`  | `addSoldier`, `createUnit`          |
+| 軍の向きを変える     | `rotateArmy`     | `setDirection`, `changeDirection`   |
+| ターンを終了する     | `endTurn`        | `incrementTurn`, `nextTurn`         |
+| 兵をレベルアップする | `upgradeSoldier` | `updateLevel`, `setSoldierStats`    |
+| 負傷した兵を回復する | `healSoldier`    | `addHealth`, `updateHealth`         |
+| 軍を解散する         | `disbandArmy`    | `deleteArmy`, `removeArmy`          |
 
 ## [MUST] composition パターンを採用する
 
@@ -523,3 +939,7 @@ function ArmyManagement() {
   );
 }
 ```
+
+## マジックナンバーは必ず定数化する
+
+className に書く`w-[50]px`や hoge.length > 3 などのマジックナンバーは states/配下にドメインを切って定数化する

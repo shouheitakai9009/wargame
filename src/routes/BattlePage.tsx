@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
+import { BattleMap } from "../widgets/Map";
 
 export default function BattlePage() {
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-slate-900 text-white overflow-hidden">
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -49,13 +50,9 @@ export default function BattlePage() {
         </aside>
 
         {/* Main Battle Area */}
-        <main className="flex-1 p-6">
-          <div className="h-full bg-slate-800/50 rounded-lg border border-slate-700 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🗺️</div>
-              <h2 className="text-2xl font-semibold mb-2">戦場マップ</h2>
-              <p className="text-slate-400">ここに戦場のマップが表示されます</p>
-            </div>
+        <main className="flex-1">
+          <div className="h-full bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden">
+            <BattleMap />
           </div>
         </main>
 

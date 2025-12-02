@@ -1,2 +1,66 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+
+@theme {
+  /* shadcn/ui カラーをTailwind v4のテーマとして登録 */
+  --color-background: 0 0% 100%;
+  --color-foreground: 222.2 84% 4.9%;
+  --color-card: 0 0% 100%;
+  --color-card-foreground: 222.2 84% 4.9%;
+  --color-popover: 0 0% 100%;
+  --color-popover-foreground: 222.2 84% 4.9%;
+  --color-primary: 221.2 83.2% 53.3%;
+  --color-primary-foreground: 210 40% 98%;
+  --color-secondary: 210 40% 96.1%;
+  --color-secondary-foreground: 222.2 47.4% 11.2%;
+  --color-muted: 210 40% 96.1%;
+  --color-muted-foreground: 215.4 16.3% 46.9%;
+  --color-accent: 210 40% 96.1%;
+  --color-accent-foreground: 222.2 47.4% 11.2%;
+  --color-destructive: 0 84.2% 60.2%;
+  --color-destructive-foreground: 210 40% 98%;
+  --color-border: 214.3 31.8% 91.4%;
+  --color-input: 214.3 31.8% 91.4%;
+  --color-ring: 221.2 83.2% 53.3%;
+
+  /* 地形カラー */
+  --color-terrain-grass: 88 55% 53%;
+  --color-terrain-water: 207 87% 61%;
+  --color-terrain-mountain-1: 18 22% 51%;
+  --color-terrain-mountain-2: 18 26% 35%;
+  --color-terrain-mountain-3: 18 29% 29%;
+  --color-terrain-forest: 88 48% 36%;
+
+  --radius: 0.5rem;
+}
+
+@layer base {
+  :root {
+    /* CSS変数としても定義（hsl値を直接参照するため） */
+    --terrain-grass: 88 55% 53%;
+    --terrain-water: 207 87% 61%;
+    --terrain-mountain-1: 18 22% 51%;
+    --terrain-mountain-2: 18 26% 35%;
+    --terrain-mountain-3: 18 29% 29%;
+    --terrain-forest: 88 48% 36%;
+  }
+
+  .dark {
+    /* ダークモード用の地形カラー */
+    --terrain-grass: 88 45% 45%;
+    --terrain-water: 207 75% 50%;
+    --terrain-mountain-1: 18 22% 45%;
+    --terrain-mountain-2: 18 26% 38%;
+    --terrain-mountain-3: 18 29% 32%;
+    --terrain-forest: 88 48% 30%;
+  }
+
+  * {
+    border-color: hsl(var(--color-border));
+  }
+
+  body {
+    background-color: hsl(var(--color-background));
+    color: hsl(var(--color-foreground));
+  }
+}

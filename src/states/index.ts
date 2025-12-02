@@ -1,11 +1,15 @@
 import { configureStore } from "@reduxjs/toolkit";
-import exampleReducer from "./exampleSlice";
+import exampleReducer from "./slice";
+import { useDispatch, useSelector } from "react-redux";
 
 export const store = configureStore({
   reducer: {
     example: exampleReducer,
   },
 });
+
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+export const useAppSelector = useSelector.withTypes<RootState>();
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;
