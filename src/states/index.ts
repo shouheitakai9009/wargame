@@ -1,10 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
-import exampleReducer from "./slice";
+import appReducer from "./slice";
 import { useDispatch, useSelector } from "react-redux";
 
 export const store = configureStore({
   reducer: {
-    example: exampleReducer,
+    app: appReducer,
   },
 });
 

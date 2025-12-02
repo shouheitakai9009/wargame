@@ -1,28 +1,58 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  BATTLE_PHASE,
+  type PreparationTab,
+  type RightSidebarTab,
+} from "./battle";
+import { initialState } from "./state";
 
-interface ExampleState {
-  value: number;
-}
-
-const initialState: ExampleState = {
-  value: 0,
-};
-
-export const exampleSlice = createSlice({
-  name: "example",
+export const slice = createSlice({
+  name: "app",
   initialState,
   reducers: {
-    increment: (state) => {
-      state.value += 1;
+    // ユーザーがバトルを開始する
+    startBattle: (state) => {
+      state.phase = BATTLE_PHASE.BATTLE;
+      state.turn = 1;
     },
-    decrement: (state) => {
-      state.value -= 1;
+
+    // ユーザーが次のターンに進む
+    nextTurn: (state) => {
+      state.turn += 1;
     },
-    incrementByAmount: (state, action: PayloadAction<number>) => {
-      state.value += action.payload;
+
+    // ユーザーがバトルを終了する（結果フェーズへ）
+    endBattle: (state) => {
+      state.phase = BATTLE_PHASE.RESULT;
+    },
+
+    // ユーザーがバトルを完全に終了する（準備フェーズに戻る）
+    finishBattle: (state) => {
+      state.phase = initialState.phase;
+      state.turn = initialState.turn;
+      state.preparationTab = initialState.preparationTab;
+      state.rightSidebarTab = initialState.rightSidebarTab;
+    },
+
+    // ユーザーが準備中のタブを切り替える
+    switchPreparationTab: (state, action: PayloadAction<PreparationTab>) => {
+      state.preparationTab = action.payload;
+    },
+
+    // ユーザーが右側サイドバーのタブを切り替える
+    switchRightSidebarTab: (state, action: PayloadAction<RightSidebarTab>) => {
+      state.rightSidebarTab = action.payload;
     },
   },
 });
 
-export const { increment, decrement, incrementByAmount } = exampleSlice.actions;
-export default exampleSlice.reducer;
+export const {
+  startBattle,
+  nextTurn,
+  endBattle,
+  finishBattle,
+  switchPreparationTab,
+  switchRightSidebarTab,
+} = slice.actions;
+
+export default slice.reducer;

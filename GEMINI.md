@@ -3,3 +3,4 @@
 - @docs/directory-structure.md
 - @docs/battle-rule.md
 - @docs/coding-rule.md
+- @docs/conversation.md
