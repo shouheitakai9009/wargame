@@ -10,10 +10,10 @@
  * ```
  */
 export const TERRAIN_COLORS = {
-  GRASS: "hsl(var(--terrain-grass))",
-  WATER: "hsl(var(--terrain-water))",
-  MOUNTAIN_1: "hsl(var(--terrain-mountain-1))",
-  MOUNTAIN_2: "hsl(var(--terrain-mountain-2))",
-  MOUNTAIN_3: "hsl(var(--terrain-mountain-3))",
-  FOREST: "hsl(var(--terrain-forest))",
+  GRASS: "var(--color-terrain-grass)",
+  WATER: "var(--color-terrain-water)",
+  MOUNTAIN_1: "var(--color-terrain-mountain-1)",
+  MOUNTAIN_2: "var(--color-terrain-mountain-2)",
+  MOUNTAIN_3: "var(--color-terrain-mountain-3)",
+  FOREST: "var(--color-terrain-forest)",
 } as const;

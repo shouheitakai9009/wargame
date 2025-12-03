@@ -1,6 +1,14 @@
 import { memo, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/states";
-import { placeTroop } from "@/states/slice";
+import {
+  placeTroop,
+  removeTroop,
+  showError,
+  switchArmyFormationMode,
+  beginSelectionDrag,
+  updateSelectionDrag,
+} from "@/states/slice";
+import { ARMY_FORMATION_MODE } from "@/states/battle";
 import { TERRAIN_COLORS } from "../../../designs/colors";
 import { TERRAIN_TYPE, type Terrain } from "../../../states/terrain";
 import { TILE_SIZE } from "@/states/map";
@@ -13,11 +21,19 @@ import type { SoldierType } from "@/states/soldier";
 import type { LucideIcon } from "lucide-react";
 import { Crown, Swords, Target, Shield, Flame } from "lucide-react";
 import { useDrop } from "@react-aria/dnd";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from "@/designs/ui/context-menu";
 
 type Props = {
   x: number;
   y: number;
   terrain: Terrain;
+  isSelected: boolean;
 };
 
 const TROOP_ICON_MAP: Record<SoldierType, LucideIcon> = {
@@ -28,10 +44,16 @@ const TROOP_ICON_MAP: Record<SoldierType, LucideIcon> = {
   CAVALRY: Flame,
 };
 
-export const Tile = memo(function Tile({ x, y, terrain }: Props) {
+export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
   const dispatch = useAppDispatch();
   const placedTroops = useAppSelector((state) => state.app.placedTroops);
   const isDraggingTroop = useAppSelector((state) => state.app.isDraggingTroop);
+  const armyFormationMode = useAppSelector(
+    (state) => state.app.armyFormationMode
+  );
+  const selectionDragStart = useAppSelector(
+    (state) => state.app.selectionDragStart
+  );
   const ref = useRef<HTMLDivElement>(null);
 
   const troopOnTile = placedTroops.find((t) => t.x === x && t.y === y);
@@ -56,12 +78,27 @@ export const Tile = memo(function Tile({ x, y, terrain }: Props) {
 
           // Validate placement
           if (isPositionOccupied(x, y, placedTroops)) {
-            console.warn("Position already occupied");
+            dispatch(showError("既に配置されています"));
             return;
           }
 
           if (!canPlaceTroop(data.type, placedTroops)) {
-            console.warn("Cannot place troop: limit reached");
+            // Determine reason for failure
+            const total = placedTroops.length;
+            const counts = placedTroops.reduce((acc, troop) => {
+              acc[troop.type] = (acc[troop.type] || 0) + 1;
+              return acc;
+            }, {} as Record<SoldierType, number>);
+
+            if (total >= 30) {
+              dispatch(showError("最大配置数（30体）を超えています"));
+            } else if (data.type === "GENERAL" && (counts.GENERAL || 0) >= 1) {
+              dispatch(showError("将軍は1体までしか配置できません"));
+            } else if (data.type === "CAVALRY" && (counts.CAVALRY || 0) >= 10) {
+              dispatch(showError("騎兵は10体までしか配置できません"));
+            } else {
+              dispatch(showError("配置制限を超えています"));
+            }
             return;
           }
 
@@ -102,10 +139,41 @@ export const Tile = memo(function Tile({ x, y, terrain }: Props) {
 
   const TroopIcon = troopOnTile ? TROOP_ICON_MAP[troopOnTile.type] : null;
 
-  return (
+  const handleRemoveTroop = () => {
+    dispatch(removeTroop({ x, y }));
+  };
+
+  // 矩形選択のマウスイベントハンドラー
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (armyFormationMode === ARMY_FORMATION_MODE.SELECT) {
+      e.preventDefault();
+      dispatch(beginSelectionDrag({ x, y }));
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (
+      armyFormationMode === ARMY_FORMATION_MODE.SELECT &&
+      selectionDragStart
+    ) {
+      dispatch(updateSelectionDrag({ x, y }));
+    }
+  };
+
+  const handleContextMenu = (item: string) => {
+    if (item === "軍選択モード") {
+      dispatch(switchArmyFormationMode(ARMY_FORMATION_MODE.SELECT));
+    } else if (item === "軍分割モード") {
+      dispatch(switchArmyFormationMode(ARMY_FORMATION_MODE.SPLIT));
+    }
+  };
+
+  const tileContent = (
     <div
       ref={ref}
       {...dropProps}
+      onMouseDown={handleMouseDown}
+      onMouseEnter={handleMouseEnter}
       className="transition-all duration-200 relative flex items-center justify-center overflow-hidden"
       style={{
         width: TILE_SIZE,
@@ -117,14 +185,22 @@ export const Tile = memo(function Tile({ x, y, terrain }: Props) {
             : isPlacementZone && isDraggingTroop
             ? "brightness(1.2)"
             : undefined,
-        border:
-          isPlacementZone && isDropTarget
-            ? "2px solid rgba(34, 197, 94, 0.8)"
-            : "1px solid rgba(100, 116, 139, 0.2)",
-        boxShadow:
-          isPlacementZone && isDropTarget
-            ? "0 0 12px rgba(34, 197, 94, 0.6), inset 0 0 20px rgba(34, 197, 94, 0.3)"
+        border: isSelected
+          ? "2px dashed rgba(147, 51, 234, 0.8)"
+          : isPlacementZone && isDropTarget
+          ? "2px solid rgba(34, 197, 94, 0.8)"
+          : "1px solid rgba(100, 116, 139, 0.2)",
+        boxShadow: isSelected
+          ? "0 0 12px rgba(147, 51, 234, 0.6), inset 0 0 20px rgba(147, 51, 234, 0.3)"
+          : isPlacementZone && isDropTarget
+          ? "0 0 12px rgba(34, 197, 94, 0.6), inset 0 0 20px rgba(34, 197, 94, 0.3)"
+          : undefined,
+        cursor:
+          armyFormationMode === ARMY_FORMATION_MODE.SELECT
+            ? "crosshair"
             : undefined,
+        userSelect:
+          armyFormationMode === ARMY_FORMATION_MODE.SELECT ? "none" : undefined,
       }}
       data-x={x}
       data-y={y}
@@ -140,5 +216,39 @@ export const Tile = memo(function Tile({ x, y, terrain }: Props) {
         </div>
       )}
     </div>
+  );
+
+  // 常にコンテキストメニューを表示
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{tileContent}</ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => handleContextMenu("軍選択モード")}>
+          軍選択モード
+          {armyFormationMode === ARMY_FORMATION_MODE.SELECT && " ✓"}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => handleContextMenu("軍分割モード")}>
+          軍分割モード
+          {armyFormationMode === ARMY_FORMATION_MODE.SPLIT && " ✓"}
+        </ContextMenuItem>
+
+        {troopOnTile && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={handleRemoveTroop} variant="destructive">
+              兵の削除
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}, (prevProps, nextProps) => {
+  // propsが変わっていなければ再レンダリングしない
+  return (
+    prevProps.x === nextProps.x &&
+    prevProps.y === nextProps.y &&
+    prevProps.terrain === nextProps.terrain &&
+    prevProps.isSelected === nextProps.isSelected
   );
 });

@@ -9,7 +9,7 @@ export function RightSidebar() {
   const { rightSidebarTab } = useAppSelector((state) => state.app);
 
   return (
-    <aside className="w-80 bg-slate-800 border-l border-slate-700 overflow-y-auto">
+    <aside className="w-80 bg-slate-800 border-l border-slate-700 overflow-y-auto custom-scrollbar">
       {/* タブヘッダー */}
       <div className="flex border-b border-slate-700">
         <button

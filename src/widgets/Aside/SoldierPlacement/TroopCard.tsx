@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/designs/ui/card";
 import { Swords, ShieldCheck, Crosshair, Zap } from "lucide-react";
 import type { SoldierType } from "@/states/soldier";
 import { useDrag } from "@react-aria/dnd";
@@ -98,6 +98,19 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
           style={{
             background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%)`,
             boxShadow: `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`,
+            transition: "box-shadow 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = `
+              0 0 60px 8px ${theme.primary}90,
+              0 0 40px 4px ${theme.primary}70,
+              0 12px 48px ${theme.primary}80,
+              0 0 0 3px ${theme.primary}60,
+              inset 0 0 20px ${theme.primary}30
+            `;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`;
           }}
         >
           {/* Animated background glow */}
@@ -113,7 +126,8 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
             <div
               className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
               style={{
-                background: `linear-gradient(90deg, transparent, ${theme.secondary}30, transparent)`,
+                background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6), transparent)`,
+                filter: "blur(8px)",
               }}
             />
           </div>

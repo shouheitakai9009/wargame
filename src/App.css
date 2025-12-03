@@ -1,66 +1,125 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Tailwind v4 Theme Configuration */
 @theme {
-  /* shadcn/ui カラーをTailwind v4のテーマとして登録 */
-  --color-background: 0 0% 100%;
-  --color-foreground: 222.2 84% 4.9%;
-  --color-card: 0 0% 100%;
-  --color-card-foreground: 222.2 84% 4.9%;
-  --color-popover: 0 0% 100%;
-  --color-popover-foreground: 222.2 84% 4.9%;
-  --color-primary: 221.2 83.2% 53.3%;
-  --color-primary-foreground: 210 40% 98%;
-  --color-secondary: 210 40% 96.1%;
-  --color-secondary-foreground: 222.2 47.4% 11.2%;
-  --color-muted: 210 40% 96.1%;
-  --color-muted-foreground: 215.4 16.3% 46.9%;
-  --color-accent: 210 40% 96.1%;
-  --color-accent-foreground: 222.2 47.4% 11.2%;
-  --color-destructive: 0 84.2% 60.2%;
-  --color-destructive-foreground: 210 40% 98%;
-  --color-border: 214.3 31.8% 91.4%;
-  --color-input: 214.3 31.8% 91.4%;
-  --color-ring: 221.2 83.2% 53.3%;
+  /* Color Palette - Light Mode */
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(20.38% 0.006 285.885);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(20.38% 0.006 285.885);
+  --color-popover: oklch(100% 0 0);
+  --color-popover-foreground: oklch(20.38% 0.006 285.885);
+  --color-primary: oklch(59.75% 0.207 13.724);
+  --color-primary-foreground: oklch(98.04% 0.013 14.628);
+  --color-secondary: oklch(96.48% 0.001 285.885);
+  --color-secondary-foreground: oklch(26.28% 0.013 285.885);
+  --color-muted: oklch(96.48% 0.001 285.885);
+  --color-muted-foreground: oklch(56.02% 0.015 285.885);
+  --color-accent: oklch(96.48% 0.001 285.885);
+  --color-accent-foreground: oklch(26.28% 0.013 285.885);
+  --color-destructive: oklch(0.5308 0.2178 29.23);
+  --color-destructive-foreground: oklch(98.71% 0 0);
+  --color-border: oklch(91.39% 0.004 285.885);
+  --color-input: oklch(91.39% 0.004 285.885);
+  --color-ring: oklch(59.75% 0.207 13.724);
 
-  /* 地形カラー */
-  --color-terrain-grass: 88 55% 53%;
-  --color-terrain-water: 207 87% 61%;
-  --color-terrain-mountain-1: 18 22% 51%;
-  --color-terrain-mountain-2: 18 26% 35%;
-  --color-terrain-mountain-3: 18 29% 29%;
-  --color-terrain-forest: 88 48% 36%;
+  /* Chart Colors */
+  --color-chart-1: oklch(69.17% 0.151 42.361);
+  --color-chart-2: oklch(53.04% 0.084 200.081);
+  --color-chart-3: oklch(42.09% 0.054 229.695);
+  --color-chart-4: oklch(75.8% 0.138 88.208);
+  --color-chart-5: oklch(76.13% 0.156 52.826);
 
+  /* Terrain Colors */
+  --color-terrain-grass: oklch(64.84% 0.123 130.449);
+  --color-terrain-water: oklch(70.84% 0.155 241.873);
+  --color-terrain-mountain-1: oklch(56.84% 0.047 56.365);
+  --color-terrain-mountain-2: oklch(45.18% 0.057 56.365);
+  --color-terrain-mountain-3: oklch(40.35% 0.063 56.365);
+  --color-terrain-forest: oklch(51.84% 0.107 130.449);
+
+  /* Scrollbar */
+  --color-scrollbar-track: oklch(30.49% 0.038 255.148);
+  --color-scrollbar-thumb: oklch(46.28% 0.027 255.148);
+  --color-scrollbar-thumb-hover: oklch(56.28% 0.022 255.148);
+
+  /* Radius */
   --radius: 0.5rem;
 }
 
 @layer base {
-  :root {
-    /* CSS変数としても定義（hsl値を直接参照するため） */
-    --terrain-grass: 88 55% 53%;
-    --terrain-water: 207 87% 61%;
-    --terrain-mountain-1: 18 22% 51%;
-    --terrain-mountain-2: 18 26% 35%;
-    --terrain-mountain-3: 18 29% 29%;
-    --terrain-forest: 88 48% 36%;
-  }
-
+  /* Dark Mode Theme */
   .dark {
-    /* ダークモード用の地形カラー */
-    --terrain-grass: 88 45% 45%;
-    --terrain-water: 207 75% 50%;
-    --terrain-mountain-1: 18 22% 45%;
-    --terrain-mountain-2: 18 26% 38%;
-    --terrain-mountain-3: 18 29% 32%;
-    --terrain-forest: 88 48% 30%;
+    --color-background: oklch(26.72% 0.013 49.342);
+    --color-foreground: oklch(95.64% 0 0);
+    --color-card: oklch(32.89% 0.011 49.342);
+    --color-card-foreground: oklch(95.64% 0 0);
+    --color-popover: oklch(30.49% 0 0);
+    --color-popover-foreground: oklch(95.64% 0 0);
+    --color-primary: oklch(59.75% 0.207 13.724);
+    --color-primary-foreground: oklch(98.04% 0.013 14.628);
+    --color-secondary: oklch(35.49% 0.006 285.885);
+    --color-secondary-foreground: oklch(98.71% 0 0);
+    --color-muted: oklch(35.49% 0 0);
+    --color-muted-foreground: oklch(70.28% 0.013 285.885);
+    --color-accent: oklch(35.49% 0.008 49.342);
+    --color-accent-foreground: oklch(98.71% 0 0);
+    --color-destructive: oklch(44.04% 0.141 27.325);
+    --color-destructive-foreground: oklch(97.88% 0.015 14.628);
+    --color-border: oklch(35.49% 0.006 285.885);
+    --color-input: oklch(35.49% 0.006 285.885);
+    --color-ring: oklch(59.75% 0.207 13.724);
+
+    /* Dark Mode Chart Colors */
+    --color-chart-1: oklch(60.17% 0.131 255.148);
+    --color-chart-2: oklch(57.04% 0.098 172.524);
+    --color-chart-3: oklch(68.8% 0.15 88.208);
+    --color-chart-4: oklch(72.28% 0.12 302.71);
+    --color-chart-5: oklch(68.04% 0.156 13.724);
+
+    /* Dark Mode Terrain Colors */
+    --color-terrain-grass: oklch(58.84% 0.1 130.449);
+    --color-terrain-water: oklch(59.546% 0.12024 242.334);
+    --color-terrain-mountain-1: oklch(54.84% 0.047 56.365);
+    --color-terrain-mountain-2: oklch(48.18% 0.057 56.365);
+    --color-terrain-mountain-3: oklch(43.35% 0.063 56.365);
+    --color-terrain-forest: oklch(45.84% 0.107 130.449);
   }
 
   * {
-    border-color: hsl(var(--color-border));
+    @apply border-border;
   }
 
   body {
-    background-color: hsl(var(--color-background));
-    color: hsl(var(--color-foreground));
+    @apply bg-background text-foreground;
+  }
+}
+
+/* カスタムスクロールバースタイル */
+@layer utilities {
+  .custom-scrollbar {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+  }
+
+  /* Webkit (Chrome, Safari, Edge) */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--color-scrollbar-track);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-scrollbar-thumb);
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-scrollbar-thumb-hover);
   }
 }

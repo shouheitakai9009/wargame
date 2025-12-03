@@ -29,3 +29,13 @@ export const RIGHT_SIDEBAR_TAB = {
 
 export type RightSidebarTab =
   (typeof RIGHT_SIDEBAR_TAB)[keyof typeof RIGHT_SIDEBAR_TAB];
+
+// 軍編成モードの種類
+export const ARMY_FORMATION_MODE = {
+  NONE: "NONE", // モードなし
+  SELECT: "SELECT", // 選択モード
+  SPLIT: "SPLIT", // 分割モード
+} as const;
+
+export type ArmyFormationMode =
+  (typeof ARMY_FORMATION_MODE)[keyof typeof ARMY_FORMATION_MODE];

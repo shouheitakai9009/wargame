@@ -414,3 +414,359 @@ export default function BattlePage() {
 - **widgets/**: ビジネスロジックを持つコンポーネント
 - **states/**: 状態管理とドメインの型・定数
 - **routes/**: ページ単位のコンポーネント（組み立てのみ）
+
+---
+
+### 9. カスタムスクロールバーの実装 - ダークテーマ対応
+
+#### 要求
+
+- 左右サイドバーのスクロールバーをダークテーマに合ったデザインに変更
+- ブラウザデフォルトのダサいスクロールバーを置き換える
+
+#### 実装内容
+
+**App.css** - CSS変数とスクロールバースタイル
+
+```css
+@layer base {
+  :root {
+    /* カスタムスクロールバー */
+    --scrollbar-width: 8px;
+    --scrollbar-track: 217 33% 17%; /* slate-900 */
+    --scrollbar-thumb: 215 20% 35%; /* slate-600 */
+    --scrollbar-thumb-hover: 215 16% 47%; /* slate-500 */
+    --scrollbar-border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  .custom-scrollbar {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+  }
+
+  /* Webkit (Chrome, Safari, Edge) */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--scrollbar-track));
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--scrollbar-thumb));
+    border-radius: var(--scrollbar-border-radius);
+    transition: background-color 0.2s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--scrollbar-thumb-hover));
+  }
+}
+```
+
+**widgets/Aside/index.tsx** - カスタムスクロールバー適用
+
+```tsx
+<aside className="w-64 bg-slate-800 border-r border-slate-700 overflow-y-auto custom-scrollbar">
+```
+
+**widgets/RightSidebar/index.tsx** - カスタムスクロールバー適用
+
+```tsx
+<aside className="w-80 bg-slate-800 border-l border-slate-700 overflow-y-auto custom-scrollbar">
+```
+
+#### デザインの特徴
+
+- ✅ 細めのスクロールバー（幅8px）
+- ✅ ダークテーマに調和した配色（slate系）
+- ✅ ホバー時に明るくなるインタラクション
+- ✅ 滑らかなトランジション（0.2s ease）
+- ✅ 角丸デザイン（4px）
+- ✅ Firefox / Webkit（Chrome, Safari, Edge）両対応
+
+#### CSS変数の活用
+
+- コーディングルールに従い、カラーコードを直接指定せずCSS変数で管理
+- スクロールバーの幅、色、角丸を変数化し、保守性を向上
+- hsl形式でslate系のカラーパレットを使用
+
+---
+
+### 10. shadcn/ui インストールディレクトリの統一 - designs/ui/ への集約
+
+#### 要求
+
+- shadcn/ui のインストール先を `src/components/ui/` から `src/designs/ui/` に変更
+- プロジェクトのディレクトリ構造ルールに従う
+- `components/` ディレクトリは使わない（技術的な命名を避ける）
+
+#### 実装内容
+
+**components.json** - aliases の変更
+
+```json
+{
+  "aliases": {
+    "components": "@/designs",
+    "utils": "@/lib/utils",
+    "ui": "@/designs/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  }
+}
+```
+
+**ファイルの移動**
+
+- `src/components/ui/card.tsx` → `src/designs/ui/card.tsx` に移動
+- `src/components/` ディレクトリを削除
+
+#### ディレクトリ構造ルールとの整合性
+
+プロジェクトのディレクトリ構造では以下のルールがあります：
+
+- ✅ **designs/**: ビジネスロジックを持たない純粋な汎用 UI コンポーネント
+- ✅ **widgets/**: ビジネスロジックを持つコンポーネント
+
+shadcn/ui のコンポーネントは純粋な UI コンポーネントなので、`designs/ui/` に配置するのが適切です。
+
+#### メリット
+
+- ✅ プロジェクトのディレクトリ構造ルールに準拠
+- ✅ 技術的な命名（`components/`）を避ける
+- ✅ shadcn/ui の今後のインストール先が自動的に `src/designs/ui/` になる
+- ✅ コードベース全体で一貫したディレクトリ構造を維持
+
+---
+
+### 11. コンテキストメニューの実装 - 兵の削除機能
+
+#### 要求
+
+- shadcn/ui の context-menu をインストール
+- マップ上の兵種マスを右クリックで「削除」メニューを表示
+- 削除を選択すると配置した兵を削除
+
+#### 実装内容
+
+**1. shadcn/ui context-menu のインストール**
+
+```bash
+bunx shadcn@latest add context-menu
+```
+
+自動的に `src/designs/ui/context-menu.tsx` にインストールされました。
+
+**2. Tile コンポーネントの更新**
+
+```tsx
+// インポートを追加
+import { removeTroop } from "@/states/slice";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/designs/ui/context-menu";
+
+// 削除ハンドラーを追加
+const handleRemoveTroop = () => {
+  dispatch(removeTroop({ x, y }));
+};
+
+// 兵が配置されている場合のみコンテキストメニューを表示
+if (troopOnTile) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{tileContent}</ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={handleRemoveTroop}>削除</ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+```
+
+**3. Redux action の活用**
+
+すでに存在していた `removeTroop` アクションを活用：
+
+```typescript
+// ユーザーが兵を削除する
+removeTroop: (state, action: PayloadAction<{ x: number; y: number }>) => {
+  state.placedTroops = state.placedTroops.filter(
+    (troop) => troop.x !== action.payload.x || troop.y !== action.payload.y
+  );
+},
+```
+
+#### 実装のポイント
+
+- ✅ コンテキストメニューは兵が配置されている場合のみ表示
+- ✅ `asChild` プロパティでタイルの既存スタイルを維持
+- ✅ Redux action 命名規則に従った `removeTroop`（ユーザーの操作を直接表現）
+- ✅ shadcn/ui の components.json 設定により、自動的に `src/designs/ui/` にインストール
+
+#### UX
+
+- マップ上の兵種マスを右クリック
+- 「削除」メニューが表示される
+- 削除を選択すると即座に兵が削除される
+
+---
+
+### 12. TroopCard ホバーエフェクトの強化 - きらりんエフェクトと兵種色boxshadow
+
+#### 要求
+
+- ホバー時のきらりんエフェクトをもっと白く強くする
+- ホバー時のboxshadowを兵種と同色カラーにする
+
+#### 実装内容
+
+**1. ホバー時の兵種色boxshadowを追加**
+
+```tsx
+<Card
+  style={{
+    boxShadow: `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`,
+    transition: "box-shadow 0.3s ease",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.boxShadow = `0 8px 32px ${theme.primary}60, 0 0 24px ${theme.primary}50, 0 0 0 2px ${theme.primary}40`;
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.boxShadow = `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`;
+  }}
+>
+```
+
+**2. きらりんエフェクトを白く強化**
+
+```tsx
+{/* Shimmer effect */}
+<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+  <div
+    className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+    style={{
+      background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6), transparent)`,
+      filter: "blur(8px)",
+    }}
+  />
+</div>
+```
+
+#### 改善ポイント
+
+**ホバー時のboxshadow**
+- ✅ 通常時: `0 4px 20px ${theme.primary}40`（控えめな影）
+- ✅ ホバー時: `0 8px 32px ${theme.primary}60, 0 0 24px ${theme.primary}50`（兵種色で強い発光）
+- ✅ トランジション: `0.3s ease` で滑らかな変化
+
+**きらりんエフェクト**
+- ✅ 修正前: `${theme.secondary}30`（兵種の副色で薄い）
+- ✅ 修正後: `rgba(255, 255, 255, 0.6)`から`0.9`へのグラデーション（明るい白）
+- ✅ `blur(8px)` を追加して柔らかい光の表現
+- ✅ 5段階のグラデーションで自然な光の流れ
+
+#### 視覚効果
+
+- カードにホバーすると、兵種の色で発光するboxshadowが強くなる
+- 同時に、明るい白のきらりんエフェクトがカード全体を横断する
+- ブラーがかかった光の表現で、より高級感のある演出に
+
+#### 追加改善: ホバー時シャドウをさらに強化
+
+ホバー時のシャドウをさらに強調：
+
+```tsx
+onMouseEnter={(e) => {
+  e.currentTarget.style.boxShadow = `
+    0 0 60px 8px ${theme.primary}90,    // 広範囲で非常に濃い発光
+    0 0 40px 4px ${theme.primary}70,    // 中範囲の発光
+    0 12px 48px ${theme.primary}80,     // 下方向への深い影（立体感）
+    0 0 0 3px ${theme.primary}60,       // 太い縁取り
+    inset 0 0 20px ${theme.primary}30   // 内側からの光（発光感を演出）
+  `;
+}}
+```
+
+**強化ポイント:**
+- ✅ `60px 8px` の広範囲で非常に濃い発光（90%不透明度）
+- ✅ 複数レイヤーの発光で立体感を表現
+- ✅ `0 12px 48px` で下方向への深い影
+- ✅ `3px` の太い縁取りで輪郭を強調
+- ✅ `inset` で内側からも光る演出
+
+これにより、ホバー時にカード全体が兵種の色で強く輝くようになります。
+
+---
+
+### 13. Button コンポーネントのアニメーション追加
+
+#### 要求
+
+- Button コンポーネントにホバー時とクリック時のアニメーションを追加
+
+#### 実装内容
+
+**1. 共通アニメーション（全variant共通）**
+
+```tsx
+"transition-all duration-200"    // 滑らかなトランジション（200ms）
+"hover:scale-105"                // ホバー時に5%拡大
+"active:scale-95"                // クリック時に5%縮小（押し込まれる感じ）
+```
+
+**2. variant別のアニメーション**
+
+- **default**
+  ```tsx
+  hover:shadow-lg hover:shadow-primary/30 active:shadow-md
+  ```
+  - ホバー時：大きな影 + プライマリカラーの発光
+  - クリック時：影が少し小さくなる
+
+- **destructive**
+  ```tsx
+  hover:shadow-lg hover:shadow-destructive/30 active:shadow-md
+  ```
+  - ホバー時：大きな影 + destructiveカラーの発光
+  - クリック時：影が少し小さくなる
+
+- **outline**
+  ```tsx
+  hover:shadow-md hover:border-accent-foreground/20 active:shadow-sm
+  ```
+  - ホバー時：中程度の影 + ボーダーの強調
+  - クリック時：影が小さくなる
+
+- **secondary**
+  ```tsx
+  hover:shadow-lg hover:shadow-secondary/30 active:shadow-md
+  ```
+  - ホバー時：大きな影 + セカンダリカラーの発光
+  - クリック時：影が少し小さくなる
+
+- **ghost**
+  ```tsx
+  hover:shadow-md active:shadow-sm
+  ```
+  - ホバー時：中程度の影
+  - クリック時：影が小さくなる
+
+- **link**
+  - アニメーションなし（下線のみ）
+
+#### アニメーション効果
+
+- ✅ **ホバー時**: ボタンが5%拡大し、影が大きくなって浮き上がる
+- ✅ **クリック時**: ボタンが5%縮小し、影が小さくなって押し込まれる感じ
+- ✅ **variant別の発光**: 各variantの色に応じた影の色で統一感を演出
+- ✅ **滑らかなトランジション**: 200msで全てのプロパティがスムーズに変化
+- ✅ **既存の機能維持**: フォーカスリング、無効状態などはそのまま

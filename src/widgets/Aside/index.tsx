@@ -14,7 +14,7 @@ export function Aside() {
   }
 
   return (
-    <aside className="w-64 bg-slate-800 border-r border-slate-700 overflow-y-auto">
+    <aside className="w-64 bg-slate-800 border-r border-slate-700 overflow-y-auto custom-scrollbar">
       {/* タブヘッダー */}
       <div className="flex border-b border-slate-700">
         <button

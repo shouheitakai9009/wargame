@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card";
+import { Card } from "@/designs/ui/card";
 import type { ReactNode } from "react";
 
 type Position = "bottom" | "top" | "left" | "right";

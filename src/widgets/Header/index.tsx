@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "../../states";
 import { startBattle, nextTurn, finishBattle } from "../../states/slice";
 import { BATTLE_PHASE } from "../../states/battle";
+import { Button } from "@/designs/ui/button";
+import { ButtonGroup, ButtonGroupText } from "@/designs/ui/button-group";
 
 export function Header() {
   const dispatch = useAppDispatch();
@@ -10,45 +12,35 @@ export function Header() {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <Link
-          to="/"
-          className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded transition-colors"
-        >
-          ← ホームに戻る
-        </Link>
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/">← ホームに戻る</Link>
+        </Button>
         <h1 className="text-lg font-bold">戦闘画面</h1>
       </div>
       <div className="flex items-center gap-3">
         {phase === BATTLE_PHASE.PREPARATION && (
-          <button
-            onClick={() => dispatch(startBattle())}
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-          >
+          <Button onClick={() => dispatch(startBattle())} size="sm">
             バトル開始
-          </button>
+          </Button>
         )}
 
         {phase === BATTLE_PHASE.BATTLE && (
-          <>
-            <div className="px-3 py-1.5 text-sm bg-green-600/20 text-green-400 rounded border border-green-600/30">
-              ターン: {turn}
-            </div>
-            <button
-              onClick={() => dispatch(nextTurn())}
-              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-            >
+          <ButtonGroup>
+            <ButtonGroupText>ターン: {turn}</ButtonGroupText>
+            <Button onClick={() => dispatch(nextTurn())} size="sm">
               次ターン
-            </button>
-          </>
+            </Button>
+          </ButtonGroup>
         )}
 
         {phase === BATTLE_PHASE.RESULT && (
-          <button
+          <Button
+            variant="destructive"
             onClick={() => dispatch(finishBattle())}
-            className="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors"
+            size="sm"
           >
             バトルを終了する
-          </button>
+          </Button>
         )}
       </div>
     </div>

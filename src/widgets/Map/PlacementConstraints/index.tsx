@@ -1,5 +1,5 @@
 import { FloatingInfo } from "@/designs/FloatingInfo";
-import { CardContent } from "@/components/ui/card";
+import { CardContent } from "@/designs/ui/card";
 import { useAppSelector } from "@/states";
 
 export function PlacementConstraints() {
