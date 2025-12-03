@@ -2,6 +2,7 @@ import { useRef, useState, type MouseEvent } from "react";
 import { Tile } from "./Tile";
 import { initialMap } from "../../data/initialMap";
 import { MAP_SIZE, TILE_SIZE } from "@/states/map";
+import { PlacementConstraints } from "./PlacementConstraints";
 
 export const BattleMap = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,6 +58,7 @@ export const BattleMap = () => {
           return <Tile key={`${x}-${y}`} x={x} y={y} terrain={terrain} />;
         })}
       </div>
+      <PlacementConstraints />
     </div>
   );
 };

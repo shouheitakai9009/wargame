@@ -1,3 +1,4 @@
+import type { PlacedTroop } from "@/lib/placement";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   BATTLE_PHASE,
@@ -43,6 +44,28 @@ export const slice = createSlice({
     switchRightSidebarTab: (state, action: PayloadAction<RightSidebarTab>) => {
       state.rightSidebarTab = action.payload;
     },
+
+    // ユーザーが兵を配置する
+    placeTroop: (state, action: PayloadAction<PlacedTroop>) => {
+      state.placedTroops.push(action.payload);
+    },
+
+    // ユーザーが兵を削除する
+    removeTroop: (state, action: PayloadAction<{ x: number; y: number }>) => {
+      state.placedTroops = state.placedTroops.filter(
+        (troop) => troop.x !== action.payload.x || troop.y !== action.payload.y
+      );
+    },
+
+    // ユーザーが兵カードのドラッグを開始する
+    beginTroopDrag: (state) => {
+      state.isDraggingTroop = true;
+    },
+
+    // ユーザーが兵カードのドラッグを終了する
+    endTroopDrag: (state) => {
+      state.isDraggingTroop = false;
+    },
   },
 });
 
@@ -53,6 +76,10 @@ export const {
   finishBattle,
   switchPreparationTab,
   switchRightSidebarTab,
+  placeTroop,
+  removeTroop,
+  beginTroopDrag,
+  endTroopDrag,
 } = slice.actions;
 
 export default slice.reducer;

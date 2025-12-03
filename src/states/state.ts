@@ -1,3 +1,4 @@
+import type { PlacedTroop } from "@/lib/placement";
 import { BATTLE_PHASE, PREPARATION_TAB, RIGHT_SIDEBAR_TAB } from "./battle";
 import type { BattlePhase, PreparationTab, RightSidebarTab } from "./battle";
 
@@ -11,6 +12,10 @@ export type AppState = {
   preparationTab: PreparationTab;
   rightSidebarTab: RightSidebarTab;
 
+  // 配置された兵
+  placedTroops: PlacedTroop[];
+  isDraggingTroop: boolean;
+
   // 今後、他の状態もここに追加していく
   // 例: soldiers, armies, map など
 };
@@ -20,4 +25,6 @@ export const initialState: AppState = {
   turn: 0,
   preparationTab: PREPARATION_TAB.DEPLOY_SOLDIER,
   rightSidebarTab: RIGHT_SIDEBAR_TAB.BATTLE_LOG,
+  placedTroops: [],
+  isDraggingTroop: false,
 };

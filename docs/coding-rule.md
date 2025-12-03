@@ -535,17 +535,119 @@ const gameSlice = createSlice({
 
 ### 良い命名パターン集
 
-| ユーザーの操作       | ✅ 良い命名      | ❌ 悪い命名                         |
-| -------------------- | ---------------- | ----------------------------------- |
-| 戦闘を開始する       | `startBattle`    | `setBattleState`, `setPhase`        |
-| 軍を移動する         | `moveArmy`       | `setArmyPosition`, `updatePosition` |
-| 敵を攻撃する         | `attackEnemy`    | `decreaseHealth`, `updateTarget`    |
-| 兵を配置する         | `deploySoldier`  | `addSoldier`, `createUnit`          |
-| 軍の向きを変える     | `rotateArmy`     | `setDirection`, `changeDirection`   |
-| ターンを終了する     | `endTurn`        | `incrementTurn`, `nextTurn`         |
-| 兵をレベルアップする | `upgradeSoldier` | `updateLevel`, `setSoldierStats`    |
-| 負傷した兵を回復する | `healSoldier`    | `addHealth`, `updateHealth`         |
-| 軍を解散する         | `disbandArmy`    | `deleteArmy`, `removeArmy`          |
+| ユーザーの操作         | ✅ 良い命名      | ❌ 悪い命名                          |
+| ---------------------- | ---------------- | ------------------------------------ |
+| 戦闘を開始する         | `startBattle`    | `setBattleState`, `setPhase`         |
+| 軍を移動する           | `moveArmy`       | `setArmyPosition`, `updatePosition`  |
+| 敵を攻撃する           | `attackEnemy`    | `decreaseHealth`, `updateTarget`     |
+| 兵を配置する           | `deploySoldier`  | `addSoldier`, `createUnit`           |
+| 軍の向きを変える       | `rotateArmy`     | `setDirection`, `changeDirection`    |
+| ターンを終了する       | `endTurn`        | `incrementTurn`, `nextTurn`          |
+| 兵をレベルアップする   | `upgradeSoldier` | `updateLevel`, `setSoldierStats`     |
+| 負傷した兵を回復する   | `healSoldier`    | `addHealth`, `updateHealth`          |
+| 軍を解散する           | `disbandArmy`    | `deleteArmy`, `removeArmy`           |
+| 兵カードをドラッグ開始 | `beginTroopDrag` | `setDraggingTroop`, `setDragState`   |
+| 兵カードをドラッグ終了 | `endTroopDrag`   | `setDraggingTroop`, `clearDragState` |
+
+## [MUST] ドラッグ&ドロップの視覚フィードバックは明確に区別する
+
+ドラッグ&ドロップ機能を実装する際は、ユーザーが「どこにドロップできるか」を明確に理解できるよう、視覚的なフィードバックを適切に設計してください。
+
+### 基本原則
+
+1. **ドラッグ中は全ての有効なドロップゾーンをハイライト**
+2. **現在カーソルが重なっているドロップ対象は、他のゾーンと明確に区別**
+3. **視覚的な階層を作る**: 通常 < ドロップ可能 < ドロップ対象
+
+### ✅ 良い例
+
+```tsx
+// ドラッグ状態をReduxで管理
+const isDraggingTroop = useAppSelector((state) => state.app.isDraggingTroop);
+const { dropProps, isDropTarget } = useDrop({ ... });
+
+return (
+  <div
+    {...dropProps}
+    style={{
+      // ドロップ対象: 最も明確（緑のボーダー + グロー + 高輝度）
+      ...(isPlacementZone && isDropTarget && {
+        filter: "brightness(1.5)",
+        border: "2px solid rgba(34, 197, 94, 0.8)",
+        boxShadow: "0 0 12px rgba(34, 197, 94, 0.6), inset 0 0 20px rgba(34, 197, 94, 0.3)",
+      }),
+      // ドラッグ中の配置可能エリア: 控えめなハイライト
+      ...(isPlacementZone && isDraggingTroop && !isDropTarget && {
+        filter: "brightness(1.2)",
+        border: "1px solid rgba(100, 116, 139, 0.2)",
+      }),
+      // 通常時
+      ...(!isPlacementZone && {
+        border: "1px solid rgba(100, 116, 139, 0.2)",
+      }),
+    }}
+  >
+    {children}
+  </div>
+);
+```
+
+### ❌ 悪い例
+
+```tsx
+// アンチパターン1: ドロップ対象と他のゾーンが区別できない
+return (
+  <div
+    {...dropProps}
+    style={{
+      // 全て同じハイライト（どこにドロップできるか分からない）
+      filter:
+        isPlacementZone && (isDraggingTroop || isDropTarget)
+          ? "brightness(1.3)"
+          : undefined,
+    }}
+  >
+    {children}
+  </div>
+);
+
+// アンチパターン2: ドラッグ中に配置可能エリアが表示されない
+return (
+  <div
+    {...dropProps}
+    style={{
+      // ドロップ対象のみハイライト（他の配置可能エリアが分からない）
+      filter: isDropTarget ? "brightness(1.3)" : undefined,
+    }}
+  >
+    {children}
+  </div>
+);
+
+// アンチパターン3: ローカルステートでドラッグ状態を管理
+// 全てのタイルで個別にドラッグ状態を検知しようとする（非効率）
+const [isDragOver, setIsDragOver] = useState(false);
+
+return (
+  <div
+    onDragEnter={() => setIsDragOver(true)}
+    onDragLeave={() => setIsDragOver(false)}
+    style={{
+      filter: isDragOver ? "brightness(1.3)" : undefined,
+    }}
+  >
+    {children}
+  </div>
+);
+```
+
+### 実装チェックリスト
+
+- [ ] ドラッグ開始時に、全ての有効なドロップゾーンがハイライトされる
+- [ ] ドロップ対象（カーソルが重なっているマス）は、他のゾーンと明確に区別できる
+- [ ] ドラッグ状態は Redux で管理し、全コンポーネントで共有している
+- [ ] ドラッグ開始/終了のタイミングで、視覚フィードバックが即座に反映される
+- [ ] 色、ボーダー、シャドウなどを組み合わせて、視覚的な階層を作っている
 
 ## [MUST] composition パターンを採用する
 
