@@ -11,8 +11,9 @@ import {
   openArmyPopover,
   zoomInMap,
   zoomOutMap,
+  splitArmy,
 } from "@/states/slice";
-import { validateArmySelection } from "@/lib/armyValidation";
+import { validateArmySelection, validateArmySplit } from "@/lib/armyValidation";
 import { ArmyPopover } from "../ArmyPopover";
 import { ArmyOverlay } from "./ArmyOverlay";
 import { MapEffectOverlay } from "./MapEffectOverlay";
@@ -33,18 +34,23 @@ export const BattleMap = () => {
     (state) => state.app.selectionDragCurrent
   );
   const placedTroops = useAppSelector((state) => state.app.placedTroops);
+  const armies = useAppSelector((state) => state.app.armies);
+  const splittingArmyId = useAppSelector((state) => state.app.splittingArmyId);
 
   const mapZoomRatio = useAppSelector((state) => state.app.mapZoomRatio);
 
-  // 軍選択モード時はマップのドラッグを無効化
-  const isMapDragDisabled = armyFormationMode === ARMY_FORMATION_MODE.SELECT;
+  // 軍選択モード 又は 分割モード時はマップのドラッグを無効化
+  const isMapDragDisabled =
+    armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+    armyFormationMode === ARMY_FORMATION_MODE.SPLIT;
 
   // 選択範囲内の座標セットを計算（メモ化）
   const selectedTiles = useMemo(() => {
     if (
       !selectionDragStart ||
       !selectionDragCurrent ||
-      armyFormationMode !== ARMY_FORMATION_MODE.SELECT
+      (armyFormationMode !== ARMY_FORMATION_MODE.SELECT &&
+        armyFormationMode !== ARMY_FORMATION_MODE.SPLIT)
     ) {
       return new Set<string>();
     }
@@ -102,13 +108,19 @@ export const BattleMap = () => {
   // グローバルなマウスアップイベントで選択範囲のバリデーション
   useEffect(() => {
     const handleGlobalMouseUp = () => {
+      // 軍選択モード
       if (
         armyFormationMode === ARMY_FORMATION_MODE.SELECT &&
         selectionDragStart &&
-        selectionDragCurrent
+        selectionDragCurrent &&
+        selectedTiles.size > 0 // selectedTilesが空でない場合のみ処理
       ) {
         // バリデーション実行
-        const validation = validateArmySelection(selectedTiles, placedTroops);
+        const validation = validateArmySelection(
+          selectedTiles,
+          placedTroops,
+          armies
+        );
 
         if (!validation.isValid && validation.errorMessage) {
           dispatch(showError(validation.errorMessage));
@@ -120,7 +132,48 @@ export const BattleMap = () => {
             const [x, y] = key.split(",").map(Number);
             return { x, y };
           });
-          dispatch(openArmyPopover(positions));
+          dispatch(openArmyPopover({ positions }));
+          // 選択を終了
+          dispatch(endSelectionDrag());
+        }
+      }
+
+      // 軍分割モード
+      if (
+        armyFormationMode === ARMY_FORMATION_MODE.SPLIT &&
+        splittingArmyId &&
+        selectedTiles.size > 0 // selectedTilesが空でない場合のみ処理
+      ) {
+        // 分割対象の軍を取得
+        const army = armies.find((a) => a.id === splittingArmyId);
+        if (!army) {
+          dispatch(showError("分割対象の軍が見つかりません"));
+          dispatch(endSelectionDrag());
+          return;
+        }
+
+        // バリデーション実行
+        const positions = Array.from(selectedTiles).map((key) => {
+          const [x, y] = key.split(",").map(Number);
+          return { x, y };
+        });
+
+        const validation = validateArmySplit(selectedTiles, army, placedTroops);
+
+        if (!validation.isValid && validation.errorMessage) {
+          dispatch(showError(validation.errorMessage));
+          // バリデーション失敗時は選択を終了
+          dispatch(endSelectionDrag());
+        } else if (validation.isValid) {
+          // バリデーション成功時は軍を分割
+          dispatch(
+            splitArmy({
+              originalArmyId: splittingArmyId,
+              newArmyPositions: positions,
+            })
+          );
+          // 新しい軍のポップオーバーを開く
+          dispatch(openArmyPopover({ positions }));
           // 選択を終了
           dispatch(endSelectionDrag());
         }
@@ -135,6 +188,8 @@ export const BattleMap = () => {
     selectionDragCurrent,
     selectedTiles,
     placedTroops,
+    splittingArmyId,
+    armies,
     dispatch,
   ]);
 
@@ -202,9 +257,9 @@ export const BattleMap = () => {
         </div>
         {/* 軍のオーバーレイ */}
         <ArmyOverlay />
+        <ArmyPopover />
       </div>
       <PlacementConstraints />
-      <ArmyPopover />
     </div>
   );
 };

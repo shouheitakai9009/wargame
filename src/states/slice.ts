@@ -7,10 +7,17 @@ import {
   type ArmyFormationMode,
   type BattleMoveMode,
   type MapEffectType,
+  ARMY_FORMATION_MODE,
+  BATTLE_MOVE_MODE,
+  MAP_EFFECT,
 } from "./battle";
 import { initialState } from "./state";
-import type { Army } from "./army";
-import { ARMY_DIRECTION, type ArmyDirection } from "./army";
+import {
+  ARMY_DIRECTION,
+  ARMY_COLORS,
+  type Army,
+  type ArmyDirection,
+} from "./army";
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from "./map";
 
 export const slice = createSlice({
@@ -95,9 +102,23 @@ export const slice = createSlice({
     // ユーザーが軍編成モードを切り替える
     switchArmyFormationMode: (
       state,
-      action: PayloadAction<ArmyFormationMode>
+      action: PayloadAction<{
+        mode: ArmyFormationMode;
+        armyId?: string; // 分割モードの場合、対象の軍ID
+      }>
     ) => {
-      state.armyFormationMode = action.payload;
+      state.armyFormationMode = action.payload.mode;
+
+      // 分割モードの場合、対象の軍IDを設定
+      if (
+        action.payload.mode === ARMY_FORMATION_MODE.SPLIT &&
+        action.payload.armyId
+      ) {
+        state.splittingArmyId = action.payload.armyId;
+      } else {
+        state.splittingArmyId = null;
+      }
+
       // モード切り替え時は選択状態をリセット
       state.selectionDragStart = null;
       state.selectionDragCurrent = null;
@@ -129,14 +150,37 @@ export const slice = createSlice({
     // ユーザーが軍ポップオーバーを開く
     openArmyPopover: (
       state,
-      action: PayloadAction<Array<{ x: number; y: number }>>
+      action: PayloadAction<{
+        positions: Array<{ x: number; y: number }>;
+        armyId?: string; // 既存の軍のID（編集の場合）
+      }>
     ) => {
       state.isArmyPopoverOpen = true;
+
+      // 既存の軍を編集する場合
+      if (action.payload.armyId) {
+        const existingArmy = state.armies.find(
+          (a) => a.id === action.payload.armyId
+        );
+        if (existingArmy) {
+          state.editingArmy = {
+            id: existingArmy.id,
+            name: existingArmy.name,
+            morale: existingArmy.morale,
+            direction: existingArmy.direction,
+            positions: existingArmy.positions,
+            color: existingArmy.color,
+          };
+          return;
+        }
+      }
+
+      // 新規の軍を作成する場合
       state.editingArmy = {
         name: "",
         morale: 1,
         direction: ARMY_DIRECTION.UP,
-        positions: action.payload,
+        positions: action.payload.positions,
       };
     },
 
@@ -155,18 +199,97 @@ export const slice = createSlice({
 
     // ユーザーが軍を確定する
     confirmArmy: (state) => {
-      if (state.editingArmy) {
+      const editingArmy = state.editingArmy;
+      if (editingArmy) {
+        // 既存の軍の更新かどうかを判定
+        if (editingArmy.id) {
+          const existingArmyIndex = state.armies.findIndex(
+            (a) => a.id === editingArmy.id
+          );
+          if (existingArmyIndex !== -1) {
+            // 更新
+            state.armies[existingArmyIndex] = {
+              ...state.armies[existingArmyIndex],
+              name: editingArmy.name,
+              morale: editingArmy.morale,
+              direction: editingArmy.direction as ArmyDirection,
+              // colorは変更しない
+            };
+
+            state.isArmyPopoverOpen = false;
+            state.armyFormationMode = ARMY_FORMATION_MODE.NONE;
+            state.editingArmy = null;
+            return;
+          }
+        }
+
+        // 新規作成
+        // 既に使用されている色を取得
+        const usedColors = new Set(state.armies.map((army) => army.color));
+
+        // カラーマスターから未使用の色を探す
+        const availableColors = (
+          Object.keys(ARMY_COLORS) as Array<keyof typeof ARMY_COLORS>
+        ).filter((colorKey) => !usedColors.has(colorKey));
+
+        // 未使用の色がある場合はその最初の色、なければ最初の色を使用（ループ）
+        const assignedColor =
+          availableColors.length > 0
+            ? availableColors[0]
+            : (Object.keys(ARMY_COLORS)[0] as keyof typeof ARMY_COLORS);
+
         const newArmy: Army = {
           id: `army-${Date.now()}`,
-          name: state.editingArmy.name,
-          morale: state.editingArmy.morale,
-          direction: state.editingArmy.direction,
-          positions: state.editingArmy.positions,
+          name: editingArmy.name,
+          morale: editingArmy.morale,
+          direction: editingArmy.direction as ArmyDirection,
+          positions: editingArmy.positions,
+          color: assignedColor,
         };
         state.armies.push(newArmy);
         state.isArmyPopoverOpen = false;
+        state.armyFormationMode = ARMY_FORMATION_MODE.NONE;
         state.editingArmy = null;
       }
+    },
+
+    // ユーザーが軍を分割する
+    splitArmy: (
+      state,
+      action: PayloadAction<{
+        originalArmyId: string;
+        newArmyPositions: Array<{ x: number; y: number }>;
+      }>
+    ) => {
+      const { originalArmyId, newArmyPositions } = action.payload;
+
+      // 新しい軍の座標をSetに変換（検索用）
+      const newArmySet = new Set(
+        newArmyPositions.map((pos) => `${pos.x},${pos.y}`)
+      );
+
+      // armies配列をmapで処理し、対象の軍のpositionsを更新
+      state.armies = state.armies.map((army) => {
+        if (army.id === originalArmyId) {
+          // 元の軍から新しい軍の座標を除外
+          return {
+            ...army,
+            positions: army.positions.filter(
+              (pos) => !newArmySet.has(`${pos.x},${pos.y}`)
+            ),
+          };
+        }
+        return army;
+      });
+
+      // 分割モードをリセット
+      state.armyFormationMode = ARMY_FORMATION_MODE.NONE;
+      state.splittingArmyId = null;
+    },
+
+    // ユーザーが軍を削除する
+    deleteArmy: (state, action: PayloadAction<string>) => {
+      state.armies = state.armies.filter((army) => army.id !== action.payload);
     },
 
     // ユーザーが軍の向きを変更する
@@ -228,6 +351,8 @@ export const {
   closeArmyPopover,
   updateArmyName,
   confirmArmy,
+  splitArmy,
+  deleteArmy,
   changeArmyDirection,
   switchBattleMoveMode,
   zoomInMap,

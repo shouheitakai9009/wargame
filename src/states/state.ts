@@ -14,7 +14,7 @@ import type {
   BattleMoveMode,
   MapEffect,
 } from "./battle";
-import type { Army } from "./army";
+import type { Army, ArmyColorKey } from "./army";
 
 /**
  * アプリケーション全体の状態
@@ -42,6 +42,9 @@ export type AppState = {
   // バトル中の移動モード
   battleMoveMode: BattleMoveMode;
 
+  // 分割モード用：分割対象の軍ID
+  splittingArmyId: string | null;
+
   // 矩形選択のドラッグ情報
   selectionDragStart: { x: number; y: number } | null;
   selectionDragCurrent: { x: number; y: number } | null;
@@ -52,10 +55,12 @@ export type AppState = {
   // 軍ポップオーバー
   isArmyPopoverOpen: boolean;
   editingArmy: {
+    id?: string;
     name: string;
     morale: number;
     direction: string;
     positions: Array<{ x: number; y: number }>;
+    color?: ArmyColorKey;
   } | null;
 
   // マップエフェクト
@@ -76,6 +81,7 @@ export const initialState: AppState = {
   errorMessage: null,
   armyFormationMode: ARMY_FORMATION_MODE.NONE,
   battleMoveMode: BATTLE_MOVE_MODE.NONE,
+  splittingArmyId: null,
   selectionDragStart: null,
   selectionDragCurrent: null,
   armies: [],

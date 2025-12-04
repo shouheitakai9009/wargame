@@ -2,396 +2,15 @@
 
 このファイルには開発中の会話内容を時系列順に記録しています。
 
-## 2025-12-03 セッション
-
-### 1. initialMap.ts の作成 - 地形ルールに従った平原マップ
-
-#### 要求
-
-- バトルルールに従った自然な地形のマップが欲しい
-- 直線的な川ではなく蛇行する川
-- 森を4マス固定ではなく有機的な形に
-- 山を十字キーのような形ではなく自然な山脈に
-
-#### 実装内容
-
-**src/data/initialMap.ts**
-
-- 30×30のマップ（900マス）
-- **川（水）**: 北から南へS字を描きながら蛇行（91マス）
-- **湖**: 2つの不規則な形状の湖を配置
-- **森**: 5グループに分割（L字型、クラスター状、T字型など）
-- **山脈**: 3つの山脈を配置
-  - 主要山脈: レベル3を頂点に、レベル2が四方、レベル1が広範囲
-  - 小規模山脈×2: レベル2中心
-  - 丘陵地帯: レベル1のみ
-
-#### ルール遵守
-
-- ✅ 水は4つ以上連続
-- ✅ 森は4つ以上のグループ
-- ✅ 山レベル3の四方にはレベル2が隣接
-- ✅ 山レベル2の四方にはレベル1が隣接
-
----
-
-### 2. coding-rule.md の補完 - 説明不足箇所に例を追加
-
-#### 要求
-
-- 説明が足りない箇所を補うように解説
-- 例が必要であれば必ず良い例、悪い例を記載
-
-#### 実装内容
-
-**docs/coding-rule.md**
-
-1. **ライブラリの公式ガイド活用**
-
-   - 具体的な手順を追加（公式ドキュメント参照 → ベストプラクティス → アンチパターン回避）
-   - React 18のuseTransitionを使った良い例・悪い例を追加
-
-2. **shadcn/ui Theming の具体化**
-
-   - CSS変数を使った正しいカラー指定の例
-   - ダークモード対応のためのテーマ変数活用
-   - 直接カラーコードを使う悪い例との比較
-
-3. **shadcn/ui コンポーネント探索**
-
-   - 具体的な手順（確認 → インストール → カスタム作成）を追加
-   - Button、Dialogなどの実践的な使用例
-   - 車輪の再発明を避けるための悪い例を追加
-
-4. **Redux Action命名規則の大幅拡充**
-   - 4つの基本原則を明記（動詞で始める、ユーザーの意図を表現、現在形、具体的に）
-   - 7つの実践例（startBattle, moveArmy, attackEnemy など）
-   - 9つの操作パターン表で一目で良い命名・悪い命名が分かるように整理
-
----
-
-### 3. colors.ts の修正 - コーディングルール違反の解消
-
-#### 問題点
-
-**src/designs/colors.ts**
-
-```typescript
-// ❌ 直接カラーコードを定義（ダークモード非対応）
-export const TERRAIN_COLORS = {
-  GRASS: "#7cb342",
-  WATER: "#42a5f5",
-  // ...
-};
-```
-
-#### 修正内容
-
-1. **App.css に shadcn/ui テーマとCSS変数を追加**
-
-```css
-@theme {
-  /* shadcn/ui カラー */
-  --color-background: 0 0% 100%;
-  --color-border: 214.3 31.8% 91.4%;
-
-  /* 地形カラー */
-  --color-terrain-grass: 88 55% 53%;
-  --color-terrain-water: 207 87% 61%;
-  /* ... */
-}
-
-@layer base {
-  :root {
-    --terrain-grass: 88 55% 53%;
-    /* ... */
-  }
-
-  .dark {
-    --terrain-grass: 88 45% 45%; /* ダークモード用 */
-    /* ... */
-  }
-}
-```
-
-2. **colors.ts を CSS変数を参照するように変更**
-
-```typescript
-// ✅ CSS変数を参照（テーマ対応）
-export const TERRAIN_COLORS = {
-  GRASS: "hsl(var(--terrain-grass))",
-  WATER: "hsl(var(--terrain-water))",
-  // ...
-};
-```
-
-#### メリット
-
-- ✅ ダークモード対応
-- ✅ テーマの一貫性
-- ✅ 保守性向上
-- ✅ コーディングルール準拠
-
----
-
-### 4. Tailwind CSS v4 対応 - ビルドエラーの解消
-
-#### 問題
-
-`[plugin:@tailwindcss/vite:generate:serve] Cannot apply unknown utility class 'border-border'`
-
-#### 原因
-
-Tailwind CSS v4では設定方法が変更：
-
-- `tailwind.config.js`は不要
-- `@theme`ディレクティブでカスタムカラーを定義
-- `@apply`の使用は推奨されない
-
-#### 修正内容
-
-**App.css**
-
-```css
-/* ❌ 修正前（Tailwind v4では非推奨） */
-@layer base {
-  * {
-    @apply border-border;
-  }
-}
-
-/* ✅ 修正後（直接CSSプロパティ） */
-@layer base {
-  * {
-    border-color: hsl(var(--color-border));
-  }
-}
-```
-
----
-
-### 5. バトルフェーズの概念導入
-
-#### 要求
-
-- バトルフェーズを3つに分ける：準備中・バトル中・結果
-- 準備中: ヘッダー右側は「バトル開始」ボタン
-- バトル中: ターン数表示 + 「次ターン」ボタン
-- 結果: 「バトルを終了する」ボタン
-- 準備中の左側ナビ: 「兵配置」「軍編成」タブ
-
-#### 実装内容
-
-1. **states/battle.ts** - 定数と型定義
-
-```typescript
-export const BATTLE_PHASE = {
-  PREPARATION: "PREPARATION",
-  BATTLE: "BATTLE",
-  RESULT: "RESULT",
-} as const;
-
-export const PREPARATION_TAB = {
-  DEPLOY_SOLDIER: "DEPLOY_SOLDIER",
-  FORM_ARMY: "FORM_ARMY",
-} as const;
-```
-
-2. **states/slice.ts** - Redux Slice
-
-```typescript
-// ユーザー操作を直接表すaction名
-startBattle, nextTurn, endBattle, finishBattle, switchPreparationTab
-```
-
-3. **BattlePage.tsx** - フェーズに応じた動的UI
-   - ヘッダー右側ボタン（フェーズ別）
-   - 左側ナビ（準備中のみ表示）
-   - タブ切り替え機能
-
----
-
-### 6. 状態管理の整理 - 一本の盆栽として育てる
-
-#### 要求
-
-- battle.ts は型と定数だけ
-- 実際のステートは state.ts に配置
-- slice.ts は battleSlice という名前にせず slice でいい
-- ステートのリセットは `state.phase = initialState.phase` のように
-
-#### 修正内容
-
-1. **state.ts** - アプリケーション全体の状態を一元管理
-
-```typescript
-export type AppState = {
-  phase: BattlePhase;
-  turn: number;
-  preparationTab: PreparationTab;
-  // 今後、他の状態もここに追加していく
-};
-```
-
-2. **battle.ts** - 型と定数のみに整理
-
-```typescript
-// BattleState型定義は削除（state.tsに移動）
-```
-
-3. **slice.ts** - 一本の盆栽として
-
-```typescript
-// ❌ 修正前
-export const battleSlice = createSlice({ name: "battle", ... });
-
-// ✅ 修正後
-export const slice = createSlice({
-  name: "app",
-  initialState, // state.tsからインポート
-  reducers: {
-    finishBattle: (state) => {
-      state.phase = initialState.phase;
-      state.turn = initialState.turn;
-      state.preparationTab = initialState.preparationTab;
-    },
-  },
-});
-```
-
-4. **states/index.ts** - ストア設定を更新
-
-```typescript
-reducer: {
-  app: appReducer,
-}
-```
-
----
-
-### 7. BattlePage のリファクタリング - Composition パターン
-
-#### 問題点
-
-- ❌ render関数を使用（`renderHeaderActions`, `renderLeftSidebar`）
-- ❌ 1つのコンポーネントに複数の役割
-- ❌ compositionパターンが使われていない
-
-#### 修正内容
-
-**designs/Layout** - Compositionパターンでレイアウト構築
-
-```tsx
-<Layout>
-  <LayoutHeader>{children}</LayoutHeader>
-  <LayoutBody>{children}</LayoutBody>
-  <LayoutMain>{children}</LayoutMain>
-</Layout>
-```
-
-**widgets/Header** - ヘッダーのビジネスロジックとUI
-
-- フェーズに応じたボタン表示
-- Redux状態の管理
-
-**widgets/Aside** - サイドバーのタブ切り替え
-
-- 準備中のみ表示
-- タブヘッダーとタブコンテンツ
-
-**widgets/Aside/SoldierPlacement** - 兵配置タブ
-
-**widgets/Aside/ArmyPlacement** - 軍編成タブ
-
-**BattlePage.tsx** - シンプルな組み立て
-
-```tsx
-// ❌ 修正前：170行、render関数だらけ
-
-// ✅ 修正後：47行、compositionパターン
-export default function BattlePage() {
-  return (
-    <Layout>
-      <LayoutHeader>
-        <Header />
-      </LayoutHeader>
-      <LayoutBody>
-        <Aside />
-        <LayoutMain>...</LayoutMain>
-      </LayoutBody>
-    </Layout>
-  );
-}
-```
-
----
-
-### 8. 右側サイドバーの実装 - Composition パターン
-
-#### 要求
-
-- 右側も「戦闘ログ」「ルール解説」のタブで実装
-
-#### 実装内容
-
-1. **states/battle.ts** - 右側タブの定数追加
-
-```typescript
-export const RIGHT_SIDEBAR_TAB = {
-  BATTLE_LOG: "BATTLE_LOG",
-  RULE_EXPLANATION: "RULE_EXPLANATION",
-} as const;
-```
-
-2. **states/state.ts** - 右側タブ状態追加
-
-```typescript
-rightSidebarTab: RightSidebarTab;
-```
-
-3. **states/slice.ts** - タブ切り替えaction
-
-```typescript
-switchRightSidebarTab: (state, action: PayloadAction<RightSidebarTab>) => {
-  state.rightSidebarTab = action.payload;
-}
-```
-
-4. **widgets/BattleLog** - 戦闘ログコンポーネント
-5. **widgets/RuleExplanation** - ルール解説コンポーネント
-6. **widgets/RightSidebar** - 右側サイドバー
-
-**BattlePage.tsx** - 最終形
-
-```tsx
-// 28行、完全にcomposition
-export default function BattlePage() {
-  return (
-    <Layout>
-      <LayoutHeader>
-        <Header />
-      </LayoutHeader>
-      <LayoutBody>
-        <Aside />
-        <LayoutMain>...</LayoutMain>
-        <RightSidebar />
-      </LayoutBody>
-    </Layout>
-  );
-}
-```
-
----
-
 ## 主要な学び・パターン
 
-### Compositionパターンの徹底
+### Composition パターンの徹底
 
-- render関数は使わない
+- render 関数は使わない
 - コンポーネントに切り出す
-- childrenで柔軟に構築
+- children で柔軟に構築
 
-### Redux action命名規則
+### Redux action 命名規則
 
 - ユーザー操作を直接表す
 - `setArmy` ではなく `startBattle`
@@ -410,1182 +29,1772 @@ export default function BattlePage() {
 
 ### ディレクトリ構造
 
-- **designs/**: ビジネスロジックを持たない純粋なUI
+- **designs/**: ビジネスロジックを持たない純粋な UI
 - **widgets/**: ビジネスロジックを持つコンポーネント
 - **states/**: 状態管理とドメインの型・定数
 - **routes/**: ページ単位のコンポーネント（組み立てのみ）
 
 ---
 
-### 9. カスタムスクロールバーの実装 - ダークテーマ対応
-
-#### 要求
-
-- 左右サイドバーのスクロールバーをダークテーマに合ったデザインに変更
-- ブラウザデフォルトのダサいスクロールバーを置き換える
-
-#### 実装内容
-
-**App.css** - CSS変数とスクロールバースタイル
-
-```css
-@layer base {
-  :root {
-    /* カスタムスクロールバー */
-    --scrollbar-width: 8px;
-    --scrollbar-track: 217 33% 17%; /* slate-900 */
-    --scrollbar-thumb: 215 20% 35%; /* slate-600 */
-    --scrollbar-thumb-hover: 215 16% 47%; /* slate-500 */
-    --scrollbar-border-radius: 4px;
-  }
-}
-
-@layer utilities {
-  .custom-scrollbar {
-    /* Firefox */
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
-  }
-
-  /* Webkit (Chrome, Safari, Edge) */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: var(--scrollbar-width);
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: hsl(var(--scrollbar-track));
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: hsl(var(--scrollbar-thumb));
-    border-radius: var(--scrollbar-border-radius);
-    transition: background-color 0.2s ease;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--scrollbar-thumb-hover));
-  }
-}
-```
-
-**widgets/Aside/index.tsx** - カスタムスクロールバー適用
-
-```tsx
-<aside className="w-64 bg-slate-800 border-r border-slate-700 overflow-y-auto custom-scrollbar">
-```
-
-**widgets/RightSidebar/index.tsx** - カスタムスクロールバー適用
-
-```tsx
-<aside className="w-80 bg-slate-800 border-l border-slate-700 overflow-y-auto custom-scrollbar">
-```
-
-#### デザインの特徴
-
-- ✅ 細めのスクロールバー（幅8px）
-- ✅ ダークテーマに調和した配色（slate系）
-- ✅ ホバー時に明るくなるインタラクション
-- ✅ 滑らかなトランジション（0.2s ease）
-- ✅ 角丸デザイン（4px）
-- ✅ Firefox / Webkit（Chrome, Safari, Edge）両対応
-
-#### CSS変数の活用
-
-- コーディングルールに従い、カラーコードを直接指定せずCSS変数で管理
-- スクロールバーの幅、色、角丸を変数化し、保守性を向上
-- hsl形式でslate系のカラーパレットを使用
+## 最近の実装
 
 ---
 
-### 10. shadcn/ui インストールディレクトリの統一 - designs/ui/ への集約
+### 15. マップ上の軍名ラベルに向きの矢印を追加し、クリック可能に
 
 #### 要求
 
-- shadcn/ui のインストール先を `src/components/ui/` から `src/designs/ui/` に変更
-- プロジェクトのディレクトリ構造ルールに従う
-- `components/` ディレクトリは使わない（技術的な命名を避ける）
+- マップ上の軍名部分に向きの矢印をわかりやすく表現する
+- 軍名ラベルを押下すると軍ポップオーバーを開く
 
 #### 実装内容
 
-**components.json** - aliases の変更
-
-```json
-{
-  "aliases": {
-    "components": "@/designs",
-    "utils": "@/lib/utils",
-    "ui": "@/designs/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  }
-}
-```
-
-**ファイルの移動**
-
-- `src/components/ui/card.tsx` → `src/designs/ui/card.tsx` に移動
-- `src/components/` ディレクトリを削除
-
-#### ディレクトリ構造ルールとの整合性
-
-プロジェクトのディレクトリ構造では以下のルールがあります：
-
-- ✅ **designs/**: ビジネスロジックを持たない純粋な汎用 UI コンポーネント
-- ✅ **widgets/**: ビジネスロジックを持つコンポーネント
-
-shadcn/ui のコンポーネントは純粋な UI コンポーネントなので、`designs/ui/` に配置するのが適切です。
-
-#### メリット
-
-- ✅ プロジェクトのディレクトリ構造ルールに準拠
-- ✅ 技術的な命名（`components/`）を避ける
-- ✅ shadcn/ui の今後のインストール先が自動的に `src/designs/ui/` になる
-- ✅ コードベース全体で一貫したディレクトリ構造を維持
-
----
-
-### 11. コンテキストメニューの実装 - 兵の削除機能
-
-#### 要求
-
-- shadcn/ui の context-menu をインストール
-- マップ上の兵種マスを右クリックで「削除」メニューを表示
-- 削除を選択すると配置した兵を削除
-
-#### 実装内容
-
-**1. shadcn/ui context-menu のインストール**
-
-```bash
-bunx shadcn@latest add context-menu
-```
-
-自動的に `src/designs/ui/context-menu.tsx` にインストールされました。
-
-**2. Tile コンポーネントの更新**
+**1. ArmyOverlay コンポーネントの更新**
 
 ```tsx
-// インポートを追加
-import { removeTroop } from "@/states/slice";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/designs/ui/context-menu";
+// widgets/Map/ArmyOverlay/index.tsx
 
-// 削除ハンドラーを追加
-const handleRemoveTroop = () => {
-  dispatch(removeTroop({ x, y }));
+// 向きに応じたアイコンを取得
+const getDirectionIcon = (direction: string): LucideIcon => {
+  switch (direction) {
+    case ARMY_DIRECTION.UP:
+      return ArrowUp;
+    case ARMY_DIRECTION.DOWN:
+      return ArrowDown;
+    case ARMY_DIRECTION.LEFT:
+      return ArrowLeft;
+    case ARMY_DIRECTION.RIGHT:
+      return ArrowRight;
+    default:
+      return ArrowUp;
+  }
 };
 
-// 兵が配置されている場合のみコンテキストメニューを表示
-if (troopOnTile) {
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{tileContent}</ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem onClick={handleRemoveTroop}>削除</ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+// 軍ポップオーバーを開く
+const handleClick = () => {
+  dispatch(
+    openArmyPopover({
+      positions: army.positions,
+      armyId: army.id,
+    })
   );
-}
+};
 ```
 
-**3. Redux action の活用**
-
-すでに存在していた `removeTroop` アクションを活用：
-
-```typescript
-// ユーザーが兵を削除する
-removeTroop: (state, action: PayloadAction<{ x: number; y: number }>) => {
-  state.placedTroops = state.placedTroops.filter(
-    (troop) => troop.x !== action.payload.x || troop.y !== action.payload.y
-  );
-},
-```
-
-#### 実装のポイント
-
-- ✅ コンテキストメニューは兵が配置されている場合のみ表示
-- ✅ `asChild` プロパティでタイルの既存スタイルを維持
-- ✅ Redux action 命名規則に従った `removeTroop`（ユーザーの操作を直接表現）
-- ✅ shadcn/ui の components.json 設定により、自動的に `src/designs/ui/` にインストール
-
-#### UX
-
-- マップ上の兵種マスを右クリック
-- 「削除」メニューが表示される
-- 削除を選択すると即座に兵が削除される
-
----
-
-### 12. TroopCard ホバーエフェクトの強化 - きらりんエフェクトと兵種色boxshadow
-
-#### 要求
-
-- ホバー時のきらりんエフェクトをもっと白く強くする
-- ホバー時のboxshadowを兵種と同色カラーにする
-
-#### 実装内容
-
-**1. ホバー時の兵種色boxshadowを追加**
+**2. 軍名ラベルのデザイン改善**
 
 ```tsx
-<Card
+<div
+  onClick={handleClick}
+  className="group cursor-pointer transition-all duration-200 hover:scale-105"
   style={{
-    boxShadow: `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`,
-    transition: "box-shadow 0.3s ease",
-  }}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = `0 8px 32px ${theme.primary}60, 0 0 24px ${theme.primary}50, 0 0 0 2px ${theme.primary}40`;
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`;
+    position: "absolute" as const,
+    left: labelX + 4,
+    top: labelY + 4,
+    padding: "4px 10px",
+    backgroundColor: "rgba(59, 130, 246, 0.95)",
+    color: "white",
+    fontSize: "13px",
+    fontWeight: "bold" as const,
+    borderRadius: "6px",
+    pointerEvents: "auto" as const,
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px rgba(59, 130, 246, 0.4)",
+    zIndex: 10,
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
   }}
 >
-```
-
-**2. きらりんエフェクトを白く強化**
-
-```tsx
-{/* Shimmer effect */}
-<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-  <div
-    className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+  {/* 向きの矢印アイコン */}
+  <DirectionIcon
+    size={16}
+    className="transition-transform duration-200 group-hover:scale-110"
     style={{
-      background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6), transparent)`,
-      filter: "blur(8px)",
+      filter: "drop-shadow(0 0 4px rgba(255, 255, 255, 0.8))",
     }}
   />
+  {/* 軍名 */}
+  <span>{army.name}</span>
 </div>
 ```
 
 #### 改善ポイント
 
-**ホバー時のboxshadow**
-- ✅ 通常時: `0 4px 20px ${theme.primary}40`（控えめな影）
-- ✅ ホバー時: `0 8px 32px ${theme.primary}60, 0 0 24px ${theme.primary}50`（兵種色で強い発光）
-- ✅ トランジション: `0.3s ease` で滑らかな変化
-
-**きらりんエフェクト**
-- ✅ 修正前: `${theme.secondary}30`（兵種の副色で薄い）
-- ✅ 修正後: `rgba(255, 255, 255, 0.6)`から`0.9`へのグラデーション（明るい白）
-- ✅ `blur(8px)` を追加して柔らかい光の表現
-- ✅ 5段階のグラデーションで自然な光の流れ
-
-#### 視覚効果
-
-- カードにホバーすると、兵種の色で発光するboxshadowが強くなる
-- 同時に、明るい白のきらりんエフェクトがカード全体を横断する
-- ブラーがかかった光の表現で、より高級感のある演出に
-
-#### 追加改善: ホバー時シャドウをさらに強化
-
-ホバー時のシャドウをさらに強調：
-
-```tsx
-onMouseEnter={(e) => {
-  e.currentTarget.style.boxShadow = `
-    0 0 60px 8px ${theme.primary}90,    // 広範囲で非常に濃い発光
-    0 0 40px 4px ${theme.primary}70,    // 中範囲の発光
-    0 12px 48px ${theme.primary}80,     // 下方向への深い影（立体感）
-    0 0 0 3px ${theme.primary}60,       // 太い縁取り
-    inset 0 0 20px ${theme.primary}30   // 内側からの光（発光感を演出）
-  `;
-}}
-```
-
-**強化ポイント:**
-- ✅ `60px 8px` の広範囲で非常に濃い発光（90%不透明度）
-- ✅ 複数レイヤーの発光で立体感を表現
-- ✅ `0 12px 48px` で下方向への深い影
-- ✅ `3px` の太い縁取りで輪郭を強調
-- ✅ `inset` で内側からも光る演出
-
-これにより、ホバー時にカード全体が兵種の色で強く輝くようになります。
-
----
-
-### 13. Button コンポーネントのアニメーション追加
-
-#### 要求
-
-- Button コンポーネントにホバー時とクリック時のアニメーションを追加
-
-#### 実装内容
-
-**1. 共通アニメーション（全variant共通）**
-
-```tsx
-"transition-all duration-200"    // 滑らかなトランジション（200ms）
-"hover:scale-105"                // ホバー時に5%拡大
-"active:scale-95"                // クリック時に5%縮小（押し込まれる感じ）
-```
-
-**2. variant別のアニメーション**
-
-- **default**
-  ```tsx
-  hover:shadow-lg hover:shadow-primary/30 active:shadow-md
-  ```
-  - ホバー時：大きな影 + プライマリカラーの発光
-  - クリック時：影が少し小さくなる
-
-- **destructive**
-  ```tsx
-  hover:shadow-lg hover:shadow-destructive/30 active:shadow-md
-  ```
-  - ホバー時：大きな影 + destructiveカラーの発光
-  - クリック時：影が少し小さくなる
-
-- **outline**
-  ```tsx
-  hover:shadow-md hover:border-accent-foreground/20 active:shadow-sm
-  ```
-  - ホバー時：中程度の影 + ボーダーの強調
-  - クリック時：影が小さくなる
-
-- **secondary**
-  ```tsx
-  hover:shadow-lg hover:shadow-secondary/30 active:shadow-md
-  ```
-  - ホバー時：大きな影 + セカンダリカラーの発光
-  - クリック時：影が少し小さくなる
-
-- **ghost**
-  ```tsx
-  hover:shadow-md active:shadow-sm
-  ```
-  - ホバー時：中程度の影
-  - クリック時：影が小さくなる
-
-- **link**
-  - アニメーションなし（下線のみ）
-
-#### アニメーション効果
-
-- ✅ **ホバー時**: ボタンが5%拡大し、影が大きくなって浮き上がる
-- ✅ **クリック時**: ボタンが5%縮小し、影が小さくなって押し込まれる感じ
-- ✅ **variant別の発光**: 各variantの色に応じた影の色で統一感を演出
-- ✅ **滑らかなトランジション**: 200msで全てのプロパティがスムーズに変化
-- ✅ **既存の機能維持**: フォーカスリング、無効状態などはそのまま
-
----
-
-### 14. コンテキストメニューの拡張 - 向きと移動モード
-
-#### 要求
-
-- 右クリックした場所が軍内であれば「向き」メニューを表示し、サブメニューで上下左右を選択できる
-- バトルフェーズのみ、軍内であれば「移動モード」メニューを表示
-
-#### 実装内容
-
-**1. battle.tsに定数を追加**
-
-```typescript
-// バトル中の移動モード
-export const BATTLE_MOVE_MODE = {
-  NONE: "NONE",
-  MOVE: "MOVE",
-} as const;
-
-export type BattleMoveMode =
-  (typeof BATTLE_MOVE_MODE)[keyof typeof BATTLE_MOVE_MODE];
-```
-
-**2. state.tsに状態を追加**
-
-```typescript
-export type AppState = {
-  // ...既存の状態
-  battleMoveMode: BattleMoveMode;
-};
-
-export const initialState: AppState = {
-  // ...既存の初期値
-  battleMoveMode: BATTLE_MOVE_MODE.NONE,
-};
-```
-
-**3. slice.tsにアクションを追加**
-
-```typescript
-// ユーザーが軍の向きを変更する
-changeArmyDirection: (
-  state,
-  action: PayloadAction<{ armyId: string; direction: ArmyDirection }>
-) => {
-  const army = state.armies.find((a) => a.id === action.payload.armyId);
-  if (army) {
-    army.direction = action.payload.direction;
-  }
-},
-
-// ユーザーが移動モードを切り替える
-switchBattleMoveMode: (state, action: PayloadAction<BattleMoveMode>) => {
-  state.battleMoveMode = action.payload;
-},
-```
-
-**4. Tile コンポーネントの更新**
-
-タイルが軍に属しているかを判定：
-
-```typescript
-// このタイルが属している軍を見つける
-const belongingArmy = armies.find((army) =>
-  army.positions.some((pos) => pos.x === x && pos.y === y)
-);
-```
-
-向き変更のハンドラー：
-
-```typescript
-const handleChangeDirection = (direction: ArmyDirection) => {
-  if (belongingArmy) {
-    dispatch(changeArmyDirection({ armyId: belongingArmy.id, direction }));
-  }
-};
-```
-
-コンテキストメニューにサブメニューを追加：
-
-```tsx
-{/* 軍に属している場合は「向き」サブメニューを表示 */}
-{belongingArmy && (
-  <>
-    <ContextMenuSeparator />
-    <ContextMenuSub>
-      <ContextMenuSubTrigger>向き</ContextMenuSubTrigger>
-      <ContextMenuSubContent>
-        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.UP)}>
-          上 {belongingArmy.direction === ARMY_DIRECTION.UP && " ✓"}
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.DOWN)}>
-          下 {belongingArmy.direction === ARMY_DIRECTION.DOWN && " ✓"}
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.LEFT)}>
-          左 {belongingArmy.direction === ARMY_DIRECTION.LEFT && " ✓"}
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.RIGHT)}>
-          右 {belongingArmy.direction === ARMY_DIRECTION.RIGHT && " ✓"}
-        </ContextMenuItem>
-      </ContextMenuSubContent>
-    </ContextMenuSub>
-  </>
-)}
-
-{/* バトルフェーズかつ軍に属している場合は「移動モード」を表示 */}
-{phase === BATTLE_PHASE.BATTLE && belongingArmy && (
-  <ContextMenuItem onClick={() => handleContextMenu("移動モード")}>
-    移動モード
-  </ContextMenuItem>
-)}
-```
-
-#### 実装のポイント
-
-- ✅ **軍の判定**: タイルの座標が軍のpositionsに含まれているかで判定
-- ✅ **サブメニュー**: shadcn/ui の `ContextMenuSub`, `ContextMenuSubTrigger`, `ContextMenuSubContent` を使用
-- ✅ **チェックマーク**: 現在の向きに ✓ を表示
-- ✅ **条件付き表示**: 軍内のみ「向き」を表示、バトルフェーズのみ「移動モード」を表示
-- ✅ **Redux action命名**: `changeArmyDirection`（ユーザーの操作を直接表現）
+- ✅ 軍の向き（上下左右）が矢印アイコンで一目でわかる
+- ✅ 矢印アイコンにドロップシャドウエフェクトで視認性向上
+- ✅ ホバー時に矢印が拡大するアニメーション（`group-hover:scale-110`）
+- ✅ ラベル全体がホバー時に 5%拡大（`hover:scale-105`）
+- ✅ クリック可能なカーソル表示（`cursor-pointer`）
+- ✅ 軍ポップオーバーがワンクリックで開ける（直感的な UX）
+- ✅ フォントサイズを 13px に、パディングを増やして視認性向上
+- ✅ より強いボックスシャドウで発光エフェクトを強調
 
 #### UX
 
-**向きの変更:**
-1. 軍内のマスを右クリック
-2. 「向き」メニューが表示される
-3. サブメニューで「上」「下」「左」「右」を選択
-4. 現在の向きには ✓ が表示される
-
-**移動モード:**
-1. バトルフェーズ中に軍内のマスを右クリック
-2. 「移動モード」メニューが表示される
-3. 選択すると移動モードに切り替わる
+- マップ上の軍に、軍名と向きの矢印アイコンが表示される
+- 矢印で軍がどちらを向いているかが一目でわかる
+- 軍名ラベルにホバーすると、ラベル全体と矢印が拡大する
+- 軍名ラベルをクリックすると、軍ポップオーバーが開く
+- 右クリックメニューよりも直感的で素早いアクセス
 
 ---
 
-### 15. マップ背景のサイバーグリッド演出
+### 16. 軍名ラベルの位置を下部中央に変更
 
 #### 要求
 
-- マップの背景にTroopCardのような光り輝くサイバーな演出を追加
-- マップと同じグリッド+ボーダー
-- 背景色は`bg-slate-900`のまま維持
+- 軍名と向きの吹き出しを軍の下部に表示してほしい
 
 #### 実装内容
 
-**1. widgets/Map/index.tsx - グリッドと発光エフェクト**
+**1. ラベル位置の計算を変更**
+
+```tsx
+// widgets/Map/ArmyOverlay/index.tsx
+
+// 軍名のラベル位置（下部中央）
+const labelX = minX * TILE_SIZE + ((maxX - minX + 1) * TILE_SIZE) / 2;
+const labelY = (maxY + 1) * TILE_SIZE + 8; // 下端から8px下
+```
+
+**2. 中央揃えのスタイル追加**
 
 ```tsx
 <div
-  className="w-full h-full overflow-hidden relative bg-slate-900"
+  onClick={handleClick}
+  className="group cursor-pointer transition-all duration-200 hover:scale-105"
   style={{
-    backgroundImage: `
-      linear-gradient(to right, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
-    `,
-    backgroundSize: "50px 50px",
-    boxShadow: `
-      inset 0 0 60px rgba(59, 130, 246, 0.15),
-      inset 0 0 30px rgba(59, 130, 246, 0.1),
-      0 0 40px rgba(59, 130, 246, 0.2)
-    `,
-    border: "1px solid rgba(59, 130, 246, 0.3)",
-    animation: "cyber-grid-glow 3s ease-in-out infinite alternate",
+    position: "absolute" as const,
+    left: labelX,
+    top: labelY,
+    transform: "translateX(-50%)", // 中央揃え
+    // ...
   }}
 >
 ```
 
-**2. App.css - 脈動アニメーション**
+#### 改善ポイント
 
-```css
-@keyframes cyber-grid-glow {
-  0% {
-    box-shadow: inset 0 0 60px rgba(59, 130, 246, 0.15),
-      inset 0 0 30px rgba(59, 130, 246, 0.1), 0 0 40px rgba(59, 130, 246, 0.2);
-    border-color: rgba(59, 130, 246, 0.3);
+- ✅ 軍名ラベルが軍の下部に表示される
+- ✅ 水平方向に中央揃えで配置される
+- ✅ 軍の範囲から 8px 下に配置して視認性を確保
+- ✅ 軍の上部がスッキリして、マップが見やすくなる
+- ✅ ラベルが軍の形状に対して常に中央に配置される
+
+#### UX
+
+- 軍名ラベルが軍の下部中央に表示される
+- 軍の上部がクリアになり、地形や他の情報が見やすい
+- クリックやホバーの動作はそのまま維持
+
+---
+
+### 17. 軍の分割モード実装
+
+#### 要求
+
+- コンテキストメニューの「軍分割モード」を実装
+- 分割モードでマップ上のドラッグは矩形選択モードになる
+- 軍内の矩形のみ選択可能
+- 選択範囲内の兵のいるマス数は 2 以上（軍として成り立つため）
+- 元の軍にも 2 以上の兵が残る必要がある
+- エラーがある場合は分割を実行せずエラーメッセージを表示
+- 分割可能状態で矩形選択を終えると軍ポップオーバーが出る
+- 矩形選択部分が新しい軍として作成される
+- 選択範囲外の元の軍は維持されるが、選択部分は別軍になる
+
+#### 実装内容
+
+**1. 分割用のバリデーション関数を追加**
+
+```typescript
+// lib/armyValidation.ts
+export function validateArmySplit(
+  selectedTiles: Set<string>,
+  army: Army,
+  placedTroops: PlacedTroop[]
+): { isValid: boolean; errorMessage?: string } {
+  // 1. 選択範囲が軍内に含まれているかチェック
+  // 2. 選択範囲内の兵が2以上かチェック
+  // 3. 残りの兵が2以上かチェック
+  // 4. 選択範囲内の兵が連結しているかチェック
+  // 5. 残りの兵が連結しているかチェック
+  return { isValid: true };
+}
+```
+
+**2. 分割モード用の状態を追加**
+
+```typescript
+// states/state.ts
+export type AppState = {
+  // ...
+  splittingArmyId: string | null; // 分割対象の軍ID
+};
+```
+
+**3. switchArmyFormationMode アクションを更新**
+
+```typescript
+// states/slice.ts
+switchArmyFormationMode: (
+  state,
+  action: PayloadAction<{
+    mode: ArmyFormationMode;
+    armyId?: string; // 分割モードの場合、対象の軍ID
+  }>
+) => {
+  state.armyFormationMode = action.payload.mode;
+
+  // 分割モードの場合、対象の軍IDを設定
+  if (action.payload.mode === ARMY_FORMATION_MODE.SPLIT && action.payload.armyId) {
+    state.splittingArmyId = action.payload.armyId;
+  } else {
+    state.splittingArmyId = null;
   }
-  50% {
-    box-shadow: inset 0 0 80px rgba(59, 130, 246, 0.25),
-      inset 0 0 50px rgba(59, 130, 246, 0.2), 0 0 60px rgba(59, 130, 246, 0.35);
-    border-color: rgba(59, 130, 246, 0.5);
-  }
-  100% {
-    box-shadow: inset 0 0 60px rgba(59, 130, 246, 0.15),
-      inset 0 0 30px rgba(59, 130, 246, 0.1), 0 0 40px rgba(59, 130, 246, 0.2);
-    border-color: rgba(59, 130, 246, 0.3);
+
+  // モード切り替え時は選択状態をリセット
+  state.selectionDragStart = null;
+  state.selectionDragCurrent = null;
+},
+```
+
+**4. splitArmy アクションを追加**
+
+```typescript
+// states/slice.ts
+splitArmy: (
+  state,
+  action: PayloadAction<{
+    originalArmyId: string;
+    newArmyPositions: Array<{ x: number; y: number }>;
+  }>
+) => {
+  const { originalArmyId, newArmyPositions } = action.payload;
+
+  // 元の軍を見つける
+  const originalArmy = state.armies.find(a => a.id === originalArmyId);
+  if (!originalArmy) return;
+
+  // 新しい軍の座標をSetに変換（検索用）
+  const newArmySet = new Set(
+    newArmyPositions.map(pos => `${pos.x},${pos.y}`)
+  );
+
+  // 元の軍から新しい軍の座標を除外
+  originalArmy.positions = originalArmy.positions.filter(
+    pos => !newArmySet.has(`${pos.x},${pos.y}`)
+  );
+
+  // 分割モードをリセット
+  state.armyFormationMode = ARMY_FORMATION_MODE.NONE;
+  state.splittingArmyId = null;
+},
+```
+
+**5. Map コンポーネントに分割処理を追加**
+
+```tsx
+// widgets/Map/index.tsx
+
+// 軍分割モード
+if (
+  armyFormationMode === ARMY_FORMATION_MODE.SPLIT &&
+  selectionDragStart &&
+  selectionDragCurrent &&
+  splittingArmyId
+) {
+  // 分割対象の軍を取得
+  const army = armies.find((a) => a.id === splittingArmyId);
+
+  // バリデーション実行
+  const validation = validateArmySplit(selectedTiles, army, placedTroops);
+
+  if (!validation.isValid && validation.errorMessage) {
+    dispatch(showError(validation.errorMessage));
+    dispatch(endSelectionDrag());
+  } else if (validation.isValid) {
+    // 元の軍を更新し、新しい軍のポップオーバーを開く
+    dispatch(
+      splitArmy({
+        originalArmyId: splittingArmyId,
+        newArmyPositions: positions,
+      })
+    );
+
+    // 新しい軍のポップオーバーを開く
+    dispatch(openArmyPopover({ positions }));
+
+    dispatch(endSelectionDrag());
   }
 }
 ```
 
-#### 視覚効果
+#### 改善ポイント
 
-- ✅ **グリッドパターン**: 50px x 50px（タイルサイズと一致）
-- ✅ **青い発光ライン**: グリッドの線が青く発光
-- ✅ **内側の光**: `inset` シャドウで内側から青い光が広がる
-- ✅ **外側の光**: 周囲に青い発光エフェクト
-- ✅ **脈動アニメーション**: 3秒かけて光が強くなったり弱くなったりする
-- ✅ **背景色維持**: `bg-slate-900` のままでダークな雰囲気を保つ
-- ✅ **TroopCardとの統一感**: 同じ青色のサイバー演出
+- ✅ 軍内を右クリックして「軍分割モード」を選択可能
+- ✅ 分割モードでは矩形選択が有効になる
+- ✅ 5 つのバリデーションで分割の妥当性をチェック
+  - 選択範囲が軍内に含まれているか
+  - 選択範囲内の兵が 2 以上か
+  - 残りの兵が 2 以上か
+  - 選択範囲内の兵が連結しているか
+  - 残りの兵が連結しているか
+- ✅ バリデーションエラー時は明確なエラーメッセージを表示
+- ✅ 分割成功時は元の軍を更新し、新しい軍のポップオーバーを表示
+- ✅ 分割後は自動的にモードがリセットされる
 
-#### デザインのポイント
+#### UX
 
-- TroopCardの発光エフェクトと同じ色（`rgba(59, 130, 246, ...)`）を使用
-- グリッドサイズをタイルサイズ（50px）に合わせることで、タイルとグリッドが一致
-- `alternate` で無限ループの脈動アニメーション
-- 内側と外側の両方から発光することで、立体感と深みを表現
-
-#### 追加改善: 発光オーバーレイを前面に配置
-
-**要求**
-
-- 発光をマップより前面に配置し、将来的に攻撃方向に応じた演出を実装しやすくする
-
-**実装内容**
-
-```tsx
-<div
-  className="w-full h-full overflow-hidden relative bg-slate-900"
-  style={{
-    /* グリッドの背景のみ保持 */
-    backgroundImage: `
-      linear-gradient(to right, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
-    `,
-    backgroundSize: "50px 50px",
-  }}
->
-  {/* サイバーグロウオーバーレイ - マップの前面 */}
-  <div
-    className="absolute inset-0 z-50"
-    style={{
-      pointerEvents: "none", // クリックイベントを透過
-      boxShadow: `
-        inset 0 0 60px rgba(59, 130, 246, 0.15),
-        inset 0 0 30px rgba(59, 130, 246, 0.1),
-        0 0 40px rgba(59, 130, 246, 0.2)
-      `,
-      border: "1px solid rgba(59, 130, 246, 0.3)",
-      animation: "cyber-grid-glow 3s ease-in-out infinite alternate",
-    }}
-  />
-  {/* マップコンテンツ */}
-</div>
-```
-
-**メリット**
-
-- ✅ 発光がタイル・ユニットより前面に来る
-- ✅ 攻撃方向に応じた発光演出（例: 赤く早い脈動）が実装しやすい
-- ✅ `pointer-events: none` でマップ操作を妨げない
-- ✅ オーバーレイとして独立しているため、動的な色変更が容易
+1. 軍内のマスを右クリック
+2. 「軍分割モード」を選択
+3. 矩形選択で分割したい部分を選択
+4. バリデーション成功 → 新しい軍のポップオーバーが表示される
+5. 元の軍は選択されていない部分のみで更新される
+6. バリデーション失敗 → エラーメッセージが表示され、選択がリセットされる
 
 ---
 
-### 16. ArmyPopover のサイバーデザイン - TroopCard風の洗練されたスタイル
+### 18. 軍分割モードの矩形選択バグ修正
+
+#### 問題
+
+- 軍分割モードにしても矩形選択ができない（何も出てこない）
+
+#### 原因
+
+Tile コンポーネントのマウスイベントハンドラー（`handleMouseDown`と`handleMouseEnter`）が、`ARMY_FORMATION_MODE.SELECT`のみをチェックしており、`ARMY_FORMATION_MODE.SPLIT`をチェックしていなかった。
+
+#### 修正内容
+
+**1. マウスイベントハンドラーを更新**
+
+```tsx
+// widgets/Map/Tile/index.tsx
+
+// 矩形選択のマウスイベントハンドラー
+const handleMouseDown = (e: React.MouseEvent) => {
+  if (
+    armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+    armyFormationMode === ARMY_FORMATION_MODE.SPLIT
+  ) {
+    e.preventDefault();
+    dispatch(beginSelectionDrag({ x, y }));
+  }
+};
+
+const handleMouseEnter = () => {
+  if (
+    (armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+      armyFormationMode === ARMY_FORMATION_MODE.SPLIT) &&
+    selectionDragStart
+  ) {
+    dispatch(updateSelectionDrag({ x, y }));
+  }
+};
+```
+
+**2. カーソルスタイルを更新**
+
+```tsx
+cursor:
+  armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+  armyFormationMode === ARMY_FORMATION_MODE.SPLIT
+    ? "crosshair"
+    : undefined,
+userSelect:
+  armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+  armyFormationMode === ARMY_FORMATION_MODE.SPLIT
+    ? "none"
+    : undefined,
+```
+
+#### 改善ポイント
+
+- ✅ 分割モードでも矩形選択が有効になる
+- ✅ 分割モード時に crosshair カーソルが表示される
+- ✅ 分割モード時にテキスト選択が無効化される（userSelect: "none"）
+- ✅ 選択モードと分割モードで同じ矩形選択ロジックを使用
+
+#### UX
+
+- 軍分割モードに切り替えると、カーソルが crosshair に変わる
+- マウスをドラッグすると矩形選択が表示される
+- マウスを離すと、バリデーションが実行される
+
+---
+
+### 19. 軍分割後の元の軍の範囲が更新されないバグ修正
+
+#### 問題
+
+- 軍分割後、元の軍の範囲（ArmyOverlay のボーダー）が更新されない
+- 分割した軍が、元いた軍の範囲内に重なって表示される
+
+#### 原因
+
+`splitArmy`アクションで、`state.armies.find()`で軍を見つけて直接`positions`プロパティを変更していたため、Redux Toolkit の Immer が正しく変更を検知できていなかった可能性がある。また、`armies`配列の参照自体が変わらないため、リアクティブに更新されない可能性があった。
+
+#### 修正内容
+
+**splitArmy アクションを修正**
+
+```typescript
+// states/slice.ts
+
+// 修正前（直接変更）
+const originalArmy = state.armies.find((a) => a.id === originalArmyId);
+if (!originalArmy) return;
+originalArmy.positions = originalArmy.positions.filter(
+  (pos) => !newArmySet.has(`${pos.x},${pos.y}`)
+);
+
+// 修正後（mapで新しい配列を作成）
+state.armies = state.armies.map((army) => {
+  if (army.id === originalArmyId) {
+    // 元の軍から新しい軍の座標を除外
+    return {
+      ...army,
+      positions: army.positions.filter(
+        (pos) => !newArmySet.has(`${pos.x},${pos.y}`)
+      ),
+    };
+  }
+  return army;
+});
+```
+
+#### 改善ポイント
+
+- ✅ `armies`配列を map で処理し、新しい配列を作成
+- ✅ 対象の軍のみスプレッド演算子で新しいオブジェクトを作成
+- ✅ `positions`を filter で新しい配列として作成
+- ✅ 確実に Redux の状態の参照が変わるため、リアクティブに更新される
+- ✅ ArmyOverlay が正しくリレンダリングされ、範囲が更新される
+
+#### UX
+
+- 軍分割実行後、元の軍の ArmyOverlay のボーダーが即座に更新される
+- 分割した部分は新しい軍として別のボーダーで囲まれる
+- 元の軍と新しい軍が重ならず、正しく分離して表示される
+
+---
+
+### 20. 軍編成に関するバリデーション追加
 
 #### 要求
 
-- 軍編成ポップオーバーをTroopCardのようなイケてるサイバーデザインに変更
-- 和風の古臭いデザインから、モダンでサイバーな青い発光デザインへ
+1. すでに軍が編成されている場合、兵の削除は行えない（コンテキストメニューを disabled にする）
+2. 軍選択モードですでに軍の箇所を範囲内に含めないでほしい
 
 #### 実装内容
 
-**1. 全体のコンテナ - ダークグラデーションと青い発光**
+**1. 軍に所属している兵の削除を禁止**
 
 ```tsx
-<PopoverContent
-  className="group w-96 relative overflow-hidden border-0 shadow-2xl"
-  style={{
-    background: "linear-gradient(135deg, rgb(30, 41, 59) 0%, rgb(15, 23, 42) 100%)",
-    boxShadow: `
-      0 0 60px 8px rgba(59, 130, 246, 0.4),
-      0 0 40px 4px rgba(59, 130, 246, 0.3),
-      0 12px 48px rgba(59, 130, 246, 0.5),
-      0 0 0 1px rgba(59, 130, 246, 0.6),
-      inset 0 0 20px rgba(59, 130, 246, 0.15)
-    `,
-  }}
+// widgets/Map/Tile/index.tsx
+
+<ContextMenuItem
+  onClick={handleRemoveTroop}
+  variant="destructive"
+  disabled={!!belongingArmy} // 軍に所属している場合は削除不可
 >
+  兵の削除
+  {belongingArmy && " (軍に所属)"}
+</ContextMenuItem>
 ```
 
-**2. 背景の発光エフェクト**
+**2. 軍選択モードで既存の軍の兵を含めないバリデーション**
+
+```typescript
+// lib/armyValidation.ts
+
+export function validateArmySelection(
+  selectedTiles: Set<string>,
+  placedTroops: PlacedTroop[],
+  armies: Army[] // 既存の軍リスト
+): { isValid: boolean; errorMessage?: string } {
+  // ...
+
+  // 2. 選択範囲内に既存の軍の兵が含まれていないかチェック
+  const isAnyTroopInArmy = troopsInSelection.some((troop) =>
+    armies.some((army) =>
+      army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
+    )
+  );
+
+  if (isAnyTroopInArmy) {
+    return {
+      isValid: false,
+      errorMessage: "選択範囲内に既に軍に所属している兵が含まれています",
+    };
+  }
+
+  // ...
+}
+```
+
+**3. Map コンポーネントで armies を渡す**
 
 ```tsx
-{/* Animated background glow */}
-<div
-  className="absolute inset-0 opacity-50"
-  style={{
-    background: "radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.3), transparent 70%)",
-  }}
-/>
+// widgets/Map/index.tsx
 
-{/* Shimmer effect */}
-<div className="absolute inset-0 pointer-events-none">
+const validation = validateArmySelection(selectedTiles, placedTroops, armies);
+```
+
+#### 改善ポイント
+
+- ✅ 軍に所属している兵は削除できない
+- ✅ コンテキストメニューで削除が disabled になる
+- ✅ メニュー項目に「(軍に所属)」と表示され、理由が明確
+- ✅ 軍選択モードで既存の軍の兵を含む選択はバリデーションエラー
+- ✅ エラーメッセージで理由を明確に表示
+
+#### UX
+
+**兵の削除**
+
+- 軍に所属していない兵：右クリック → 「兵の削除」が有効
+- 軍に所属している兵：右クリック → 「兵の削除 (軍に所属)」がグレーアウト
+
+**軍選択モード**
+
+- 既存の軍の兵を含まない選択：成功 → 軍ポップオーバーが表示
+- 既存の軍の兵を含む選択：失敗 → 「選択範囲内に既に軍に所属している兵が含まれています」エラー
+
+---
+
+### 21. コンテキストメニューに軍の削除を追加
+
+#### 要求
+
+- コンテキストメニューに軍の削除を追加する
+
+#### 実装内容
+
+**1. deleteArmy アクションを追加**
+
+```typescript
+// states/slice.ts
+
+// ユーザーが軍を削除する
+deleteArmy: (state, action: PayloadAction<string>) => {
+  state.armies = state.armies.filter((army) => army.id !== action.payload);
+},
+```
+
+**2. Tile コンポーネントに軍削除ハンドラーを追加**
+
+```tsx
+// widgets/Map/Tile/index.tsx
+
+const handleDeleteArmy = () => {
+  if (belongingArmy) {
+    dispatch(deleteArmy(belongingArmy.id));
+  }
+};
+```
+
+**3. コンテキストメニューに軍の削除項目を追加**
+
+```tsx
+{
+  /* 軍に属している場合は「軍の削除」を表示 */
+}
+{
+  belongingArmy && (
+    <>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleDeleteArmy} variant="destructive">
+        軍の削除
+      </ContextMenuItem>
+    </>
+  );
+}
+```
+
+#### 改善ポイント
+
+- ✅ 軍に属しているマスを右クリックすると「軍の削除」が表示される
+- ✅ destructive variant で赤色表示され、危険な操作であることが明確
+- ✅ クリックすると、その軍が armies 配列から削除される
+- ✅ ArmyOverlay が自動的に更新され、ボーダーが消える
+- ✅ 軍名ラベルも消える
+
+#### UX
+
+1. 軍内のマスを右クリック
+2. コンテキストメニューに「軍の削除」が表示される（赤色）
+3. クリックすると軍が即座に削除される
+4. 軍のボーダーと軍名ラベルが消える
+5. 兵は配置されたまま残る（軍から解放される）
+
+---
+
+### 22. 軍の枠線を形状に合わせた描画に変更
+
+#### 要求
+
+- マップ上の軍の枠線が常に四角形になっている
+- 軍の中に兵じゃないマスがあるのは気持ち悪い
+- 四角い枠線ではなく、兵マスのみを囲うようにしてほしい
+
+#### 問題
+
+現在の実装では、軍の最小座標と最大座標で矩形のボーダーを描画していたため、軍が L 字型や複雑な形状の場合でも、常に四角い枠線で囲まれていた。これにより、軍に属していない空のマスも枠線内に含まれてしまっていた。
+
+#### 実装内容
+
+**ArmyOverlay を完全に書き換え**
+
+```tsx
+// widgets/Map/ArmyOverlay/index.tsx
+
+{
+  armies.map((army) => {
+    // 軍の座標をSetに変換（高速検索用）
+    const armyPositionsSet = new Set(
+      army.positions.map((pos) => `${pos.x},${pos.y}`)
+    );
+
+    // 各positionが隣接する方向で軍に属しているかチェック
+    const hasArmyAt = (x: number, y: number): boolean => {
+      return armyPositionsSet.has(`${x},${y}`);
+    };
+
+    return (
+      <div key={army.id}>
+        {/* 各タイルごとにボーダーを描画 */}
+        {army.positions.map((pos) => {
+          const { x, y } = pos;
+
+          // 上下左右の隣接マスが軍に属しているかチェック
+          const hasTop = hasArmyAt(x, y - 1);
+          const hasBottom = hasArmyAt(x, y + 1);
+          const hasLeft = hasArmyAt(x - 1, y);
+          const hasRight = hasArmyAt(x + 1, y);
+
+          // ボーダーのスタイル（各方向で隣接マスがない場合のみボーダーを描画）
+          const borderStyle = {
+            position: "absolute" as const,
+            left: x * TILE_SIZE,
+            top: y * TILE_SIZE,
+            width: TILE_SIZE,
+            height: TILE_SIZE,
+            borderTop: !hasTop ? "3px solid rgba(59, 130, 246, 0.8)" : "none",
+            borderBottom: !hasBottom
+              ? "3px solid rgba(59, 130, 246, 0.8)"
+              : "none",
+            borderLeft: !hasLeft ? "3px solid rgba(59, 130, 246, 0.8)" : "none",
+            borderRight: !hasRight
+              ? "3px solid rgba(59, 130, 246, 0.8)"
+              : "none",
+            pointerEvents: "none" as const,
+            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
+          };
+
+          return <div key={`${x},${y}`} style={borderStyle} />;
+        })}
+
+        {/* 軍名ラベル */}
+        {/* ... */}
+      </div>
+    );
+  });
+}
+```
+
+#### 改善ポイント
+
+- ✅ 各タイルごとに個別のボーダーを描画
+- ✅ 隣接するタイルが軍に属していない場合のみ、その方向にボーダーを描画
+- ✅ 軍の形状に完全に合わせた枠線になる
+- ✅ L 字型、T 字型など複雑な形状の軍でも正しく囲まれる
+- ✅ 軍に属していない空のマスは枠線内に含まれない
+- ✅ パフォーマンス：Set を使用して高速な隣接チェック
+
+#### 描画ロジック
+
+各タイルについて：
+
+1. 上の隣接マスが軍に属しているか → 属していなければ上辺にボーダー
+2. 下の隣接マスが軍に属しているか → 属していなければ下辺にボーダー
+3. 左の隣接マスが軍に属しているか → 属していなければ左辺にボーダー
+4. 右の隣接マスが軍に属しているか → 属していなければ右辺にボーダー
+
+これにより、軍の外周のみにボーダーが描画され、軍の形状に完全に合った枠線になる。
+
+#### UX
+
+- 軍が複雑な形状でも、兵がいるマスのみが正確に囲まれる
+- より洗練された、ゲームの UI らしいリッチな見た目になった
+- 情報の階層構造が明確になり、タイトルが際立つようになった
+
+---
+
+### 33. 合計兵力プログレスバーのデザイン刷新
+
+#### 要求
+
+- ヘッダーデザインを気に入ってもらえた
+- 合計兵力のプログレスバーも良い感じのデザインにしてほしい
+
+#### 修正内容
+
+**エネルギー充填率風デザインへの変更**
+
+既存の`Progress`コンポーネントを使わず、カスタム HTML/CSS でリッチなバーを実装。
+
+```tsx
+// widgets/ArmyPopover/index.tsx
+
+{/* ラベルとパーセンテージ */}
+<div className="flex justify-between items-end px-1">
+  <label ...><Shield /> 合計兵力</label>
+  <span className="text-cyan-400 ...">{healthPercentage}%</span>
+</div>
+
+{/* プログレスバー本体 */}
+<div className="relative p-1 bg-slate-900/80 rounded-full ...">
+  {/* 背景グリッド（目盛り） */}
+  <div className="backgroundImage: linear-gradient(90deg, transparent 50%, rgba(59, 130, 246, 0.5) 50%)" />
+
+  {/* バー（グラデーション＋発光） */}
   <div
-    className="absolute inset-0 -translate-x-full animate-shimmer"
     style={{
-      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1), transparent)",
-      animation: "shimmer 3s ease-in-out infinite",
+      width: `${healthPercentage}%`,
+      background: "linear-gradient(90deg, rgba(37,99,235,1) 0%, rgba(59,130,246,1) 50%, rgba(34,211,238,1) 100%)",
+      boxShadow: "0 0 15px rgba(59, 130, 246, 0.6)"
     }}
-  />
+  >
+    {/* 光沢ハイライト */}
+    <div className="bg-gradient-to-b from-white/30 to-transparent" />
+  </div>
+</div>
+
+{/* 数値詳細 */}
+<div className="flex justify-end px-1">
+  <span className="text-blue-400">{current}</span> / <span className="text-slate-400">{max}</span>
 </div>
 ```
 
-**3. ヘッダー - 青いグラデーション**
+#### 改善ポイント
+
+- ✅ **グラデーション**: 青〜シアンへの美しいグラデーションでエネルギー感を表現
+- ✅ **グリッド背景**: バーの背景に細かい目盛りを入れ、ハイテク感を演出
+- ✅ **光沢感**: 上部に白いハイライトを入れ、ガラス管のような質感を表現
+- ✅ **レイアウト**: 数値をバーの横ではなく上下に分散させ、すっきりとした見た目に
+- ✅ **アイコン**: `Shield`アイコンを追加し、防御力/耐久力であることを直感的に伝達
+
+#### UX
+
+- 兵力の残量が「エネルギー」として直感的に感じられるようになった
+- 細かい数値よりもバーの視覚的なインパクトを優先しつつ、必要な情報はしっかり読める
+
+---
+
+### 34. プログレスバーの微調整
+
+#### 要求
+
+- ボーダー色が主張強すぎる
+- プログレスバー本体をもっと太くしたい
+
+#### 修正内容
+
+1.  **ボーダー色の変更**:
+
+    - `border-blue-500/30` → `border-blue-500/10`
+    - 枠線の主張を抑え、バー本体を目立たせるように調整。
+
+2.  **バーの高さ変更**:
+    - `h-3` (12px) → `h-6` (24px)
+    - 太さを倍増させ、エネルギー充填率のような迫力を強化。
 
 ```tsx
-<div className="relative -mt-2 -mx-4 px-4 py-3 bg-gradient-to-r from-blue-600/30 to-cyan-600/30 border-b border-blue-500/50 backdrop-blur-sm">
-  <h3 className="relative text-white font-bold text-lg text-center tracking-wider drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
-    軍 編 成
-  </h3>
-</div>
-```
+// widgets/ArmyPopover/index.tsx
 
-**4. 軍名入力 - ダークな入力フィールド**
-
-```tsx
-<Input
-  className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner"
-  style={{
-    boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.2)",
-  }}
-/>
-```
-
-**5. 士気 - 青い炎アイコン**
-
-```tsx
-<Flame
-  className="h-8 w-8 transition-all duration-300 text-blue-400 fill-blue-400 animate-pulse"
-  style={{
-    filter: "drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))",
-  }}
-/>
-```
-
-**6. 向き - 青い発光ボックス**
-
-```tsx
-<div
-  className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-500/20 border border-blue-400/50"
-  style={{
-    boxShadow: "0 0 15px rgba(59, 130, 246, 0.5), inset 0 0 10px rgba(59, 130, 246, 0.2)",
-  }}
->
-  <div className="text-blue-400" style={{ filter: "drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))" }}>
-    {getDirectionIcon()}
+<div className="... border border-blue-500/10 ...">
+  {" "}
+  {/* ボーダーを薄く */}
+  {/* ... */}
+  <div className="relative h-6 rounded-full overflow-hidden">
+    {" "}
+    {/* 高さを倍に */}
+    {/* ... */}
   </div>
 </div>
 ```
 
-**7. 合計兵力 - 青い発光プログレスバー**
+#### UX
+
+- バーが太くなったことで、グリッドパターンやグラデーションがより鮮明に見えるようになった
+- 枠線が薄くなり、デザイン全体の馴染みが良くなった
+
+---
+
+### 35. プログレスバーの黒ずみ解消
+
+#### 要求
+
+- ボーダーがやっぱり黒く太く見える
+
+#### 原因
+
+- `border`プロパティによる物理的な線
+- `shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]`による黒い内側の影
+- これらが重なって、意図しない「黒い太枠」に見えていた可能性が高い
+
+#### 修正内容
+
+1.  **ボーダーの削除**:
+
+    - `border`クラスを完全に削除し、物理的な線をなくしました。
+
+2.  **インナーシャドウの色変更**:
+    - `rgba(0,0,0,0.5)`（黒） → `rgba(30,58,138,0.5)`（濃い青）
+    - 影の色を背景色に馴染む濃い青に変更し、黒ずみを解消しつつ立体感を維持。
 
 ```tsx
-<Progress
-  value={healthPercentage}
-  className="flex-1 h-6 bg-slate-700"
+// widgets/ArmyPopover/index.tsx
+
+// 修正前
+<div className="... border border-blue-500/10 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+
+// 修正後
+<div className="... shadow-[inset_0_0_10px_rgba(30,58,138,0.5)]">
+```
+
+#### UX
+
+- 黒い枠線がなくなり、背景に溶け込むような自然な凹凸感が生まれた
+- 全体的に青みで統一され、より洗練された印象に
+
+---
+
+### 36. プログレスバーの黒い枠線を完全除去
+
+#### 問題
+
+- 画像を確認したところ、バーの周囲に黒い枠線のようなものが見える
+- `bg-slate-900/80`（濃い背景）と`p-1`（パディング）が原因で、背景色が枠線のように見えていた
+
+#### 修正内容
+
+1.  **背景色の透明度変更**:
+
+    - `bg-slate-900/80` → `bg-slate-900/30`
+    - 背景を薄くし、周囲とのコントラストを下げて黒さを軽減。
+
+2.  **パディングの削除**:
+
+    - `p-1`を削除。
+    - バー本体とコンテナの隙間をなくし、「枠」という概念自体を排除。
+
+3.  **インナーシャドウの削除**:
+    - `shadow-[inset_...]`を削除。
+    - 影による擬似的な枠線効果もなくし、完全にフラットに。
+
+```tsx
+// widgets/ArmyPopover/index.tsx
+
+// 修正前
+<div className="relative p-1 bg-slate-900/80 rounded-full shadow-[inset_0_0_10px_rgba(30,58,138,0.5)]">
+
+// 修正後
+<div className="relative bg-slate-900/30 rounded-full">
+```
+
+#### UX
+
+- 「枠線」に見える要素が物理的になくなり、純粋なバーのみが表示されるようになった
+- 背景色が薄くなったことで、より軽やかで未来的な印象に
+
+---
+
+### 37. プログレスバーを緑色に変更
+
+#### 要求
+
+- プログレスバーは緑色で表現したい
+
+#### 修正内容
+
+**カラーパレットの変更（青系 → 緑系）**
+
+- **テキスト色**: `text-blue-300` → `text-emerald-300`
+- **パーセンテージ**: `text-cyan-400` → `text-emerald-400`
+- **グラデーション**:
+  - `rgba(37,99,235,1)` (Blue) → `rgba(5,150,105,1)` (Emerald-600)
+  - `rgba(59,130,246,1)` (Blue) → `rgba(16,185,129,1)` (Emerald-500)
+  - `rgba(34,211,238,1)` (Cyan) → `rgba(52,211,153,1)` (Emerald-400)
+- **シャドウ**: `rgba(59, 130, 246, 0.6)` → `rgba(16, 185, 129, 0.6)`
+
+```tsx
+// widgets/ArmyPopover/index.tsx
+
+<div
   style={{
-    boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.3)",
-  }}
-/>
-<span
-  className="text-lg font-bold font-mono whitespace-nowrap text-white tabular-nums"
-  style={{
-    textShadow: "0 0 10px rgba(59, 130, 246, 0.8)",
+    background: "linear-gradient(90deg, rgba(5,150,105,1) 0%, rgba(16,185,129,1) 50%, rgba(52,211,153,1) 100%)",
+    boxShadow: "0 0 15px rgba(16, 185, 129, 0.6)"
   }}
 >
-  {totalHealth.toLocaleString()} / {maxHealth.toLocaleString()}
-</span>
 ```
 
-**8. フッター - 青い発光ライン**
+#### UX
+
+- 緑色になることで「HP」「生命力」「正常な状態」というイメージが強化された
+- 青系の UI の中でアクセントとなり、視認性が向上した
+
+---
+
+### 38. プログレスバーを濃い緑色に変更
+
+#### 要求
+
+- もっと濃くて、少し暗めの緑がいい
+
+#### 修正内容
+
+**カラーパレットの変更（明るい緑 → 濃い緑）**
+
+- **テキスト色**: `text-emerald-300` → `text-green-400` / `text-green-500`
+- **グラデーション**:
+  - `rgba(5,150,105,1)` (Emerald-600) → `rgba(20,83,45,1)` (Green-900)
+  - `rgba(16,185,129,1)` (Emerald-500) → `rgba(21,128,61,1)` (Green-700)
+  - `rgba(52,211,153,1)` (Emerald-400) → `rgba(22,163,74,1)` (Green-600)
+- **ハイライト**: `white/30` → `white/10`（光沢を控えめに）
 
 ```tsx
+// widgets/ArmyPopover/index.tsx
+
 <div
-  className="relative -mb-2 -mx-4 h-1"
   style={{
-    background: "linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent)",
-    boxShadow: "0 0 10px rgba(59, 130, 246, 0.5)",
+    background: "linear-gradient(90deg, rgba(20,83,45,1) 0%, rgba(21,128,61,1) 50%, rgba(22,163,74,1) 100%)",
+    // ...
   }}
-/>
+>
 ```
 
-**9. App.css - shimmerアニメーション**
+#### UX
 
-```css
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+- 明るさを抑えたことで、より重厚感と落ち着きのあるデザインになった
+- ミリタリーテーマやダークな UI により馴染むようになった
+
+---
+
+### 39. 軍の編集時にテーマカラーが変わるバグ修正
+
+#### 問題
+
+- 軍の編成ポップオーバーでチェックマーク（確定）を押すと、既存の軍であってもテーマカラーが変わってしまう
+- 原因は、`confirmArmy` アクションが常に「新規作成」として処理しており、毎回新しい色を割り当てていたため
+- また、`editingArmy` の状態に `id` や `color` が含まれておらず、既存の軍かどうかの判別ができていなかった
+
+#### 修正内容
+
+1.  **状態定義の更新 (`src/states/state.ts`)**:
+
+    - `editingArmy` 型に `id` と `color` プロパティを追加。
+
+2.  **ポップオーバー展開処理の修正 (`src/states/slice.ts`)**:
+
+    - `openArmyPopover` で既存の軍を開く際、その `id` と `color` を `editingArmy` にコピーするように変更。
+
+3.  **確定処理の修正 (`src/states/slice.ts`)**:
+    - `confirmArmy` 内で `editingArmy.id` の有無をチェック。
+    - ID がある場合は**既存の軍の更新**を行い、色は変更しない（維持する）。
+    - ID がない場合のみ**新規作成**を行い、新しい色を割り当てる。
+
+#### 結果
+
+- 既存の軍を編集して確定しても、色が勝手に変わらなくなった
+- 新規作成時はこれまで通り、自動で色が割り当てられる
+
+---
+
+### 40. マップ下部に軍数表示を追加
+
+#### 要求
+
+- マップ下部の配置数の枠に、最大軍数 {現在の軍数} / 9 を追加してほしい
+
+#### 修正内容
+
+**PlacementConstraints コンポーネントの拡張 (`src/widgets/Map/PlacementConstraints/index.tsx`)**
+
+1.  **armies の取得**:
+
+    - `useAppSelector`を使って、Redux ストアから現在の軍の配列 (`armies`) を取得。
+
+2.  **軍数上限チェック**:
+
+    - `isArmyLimitReached = armies.length >= 9` でチェック。
+
+3.  **UI 表示の追加**:
+    - 既存の「最大配置数」「騎兵上限」「将軍上限」と同じスタイルで「軍数上限」を追加。
+    - 軍数が 9 に達した場合は、赤色でアニメーション表示。
+
+```tsx
+// widgets/Map/PlacementConstraints/index.tsx
+
+<div className="flex flex-col items-center gap-1">
+  <span className="text-slate-600 text-xs">軍数上限</span>
+  <div className="flex items-baseline gap-1">
+    <span
+      className={`... ${
+        isArmyLimitReached ? "text-red-600 animate-pulse" : "..."
+      }`}
+    >
+      {armies.length}
+    </span>
+    <span className="text-slate-600 text-sm">/ 9</span>
+  </div>
+</div>
+```
+
+#### UX
+
+- ユーザーが現在何個の軍を作成しているかが、一目で分かるようになった
+- 上限（9 個）に達すると視覚的にフィードバックが得られる
+
+---
+
+### 23. 兵マスのみに枠線を描画するバグ修正
+
+#### 問題
+
+前回の修正で、`army.positions`の全てのマスに対して枠線を描画していたため、実際には兵が配置されていない空のマスも枠線で囲まれてしまっていた。
+
+![上記画像のように、兵がいないマスも含めて枠線が描画されている](/Users/shouheitakai/.gemini/antigravity/brain/ca055d66-4e4a-4851-9676-733643d503a4/uploaded_image_1764868301888.png)
+
+#### 原因
+
+`army.positions`には、軍選択時に選択した全てのマス（兵がいるマスといないマス両方）が含まれているため、それらすべてに枠線が描画されていた。
+
+#### 修正内容
+
+**placedTroops を参照して、実際に兵が配置されているマスのみをフィルタリング**
+
+```tsx
+// widgets/Map/ArmyOverlay/index.tsx
+
+export function ArmyOverlay() {
+  const dispatch = useAppDispatch();
+  const armies = useAppSelector((state) => state.app.armies);
+  const placedTroops = useAppSelector((state) => state.app.placedTroops); // 追加
+
+  return (
+    <>
+      {armies.map((army) => {
+        // 軍の座標をSetに変換
+        const armyPositionsSet = new Set(
+          army.positions.map((pos) => `${pos.x},${pos.y}`)
+        );
+
+        // 実際に兵が配置されているマスのみをフィルタリング
+        const troopsInArmy = placedTroops.filter((troop) =>
+          armyPositionsSet.has(`${troop.x},${troop.y}`)
+        );
+
+        // 兵がいるマスの座標をSetに変換
+        const troopPositionsSet = new Set(
+          troopsInArmy.map((troop) => `${troop.x},${troop.y}`)
+        );
+
+        // 各positionに兵がいるかチェック
+        const hasTroopAt = (x: number, y: number): boolean => {
+          return troopPositionsSet.has(`${x},${y}`);
+        };
+
+        return (
+          <div key={army.id}>
+            {/* 兵が配置されているタイルごとにボーダーを描画 */}
+            {troopsInArmy.map((troop) => {
+              const { x, y } = troop;
+
+              // 上下左右の隣接マスに兵がいるかチェック
+              const hasTop = hasTroopAt(x, y - 1);
+              const hasBottom = hasTroopAt(x, y + 1);
+              const hasLeft = hasTroopAt(x - 1, y);
+              const hasRight = hasTroopAt(x + 1, y);
+
+              // ボーダーを描画
+              // ...
+            })}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 ```
 
-#### デザインの特徴
+#### 改善ポイント
 
-- ✅ **ダークグラデーション背景**: slate-700 → slate-900
-- ✅ **青い多層発光**: 外側・内側の両方から青く発光
-- ✅ **shimmerエフェクト**: 3秒周期で白い光が横断
-- ✅ **背景グロー**: 上部から青い光が広がる
-- ✅ **統一されたアクセントカラー**: 全て青（`rgba(59, 130, 246, ...)`）
-- ✅ **半透明の背景**: `bg-slate-800/50` でガラスモーフィズム風
-- ✅ **発光ボーダー**: `border-blue-500/30` で控えめな青い縁取り
-- ✅ **テキストシャドウ**: 全てのテキストに青い発光エフェクト
+- ✅ `placedTroops`を参照して実際に兵が配置されているマスを特定
+- ✅ `army.positions`と`placedTroops`の交差部分のみを使用
+- ✅ 兵がいるマスのみに枠線を描画
+- ✅ 空のマスは完全に除外される
+- ✅ 隣接チェックも兵がいるマスに対してのみ実行
 
-#### TroopCardとの統一感
+#### UX
 
-- 同じ青色（`rgba(59, 130, 246, ...)`）を使用
-- 同じダークな背景グラデーション
-- 同じshimmerエフェクト
-- 同じ発光パターン（内側+外側）
+- 兵が配置されているマスのみが正確に囲まれる
+- 軍選択時に空のマスを含めて選択しても、枠線は兵マスのみに描画される
+- 視覚的に軍の実体（兵の配置）が明確になる
 
 ---
 
-### 17. きらりエフェクトの無限ループ化とポップオーバー位置の調整
+### 24. 軍名ラベルの配置を周囲の空きスペースに応じて最適化
 
 #### 要求
 
-- きらりエフェクトが途中で終わるのを直す → 無限ループにする
-- ポップオーバーが開く位置を調整 → 上側に開くように
+- 軍を分割すると、軍名と向きの吹き出しが別軍に完全にかぶってしまう
+- 絶対に下に出すのではなく、自軍の周りの 2 マス以上空いているマスに吹き出しを出したい
+
+#### 問題
+
+従来は常に軍の下部中央にラベルを配置していたため、軍を分割して下に別の軍ができた場合、ラベルが重なってしまっていた。
 
 #### 実装内容
 
-**1. ArmyPopover - shimmerエフェクトの無限ループ化**
+**周囲 4 方向の衝突をチェックし、最適な位置を自動選択**
 
 ```tsx
-{/* Shimmer effect - 無限ループ */}
-<div className="absolute inset-0 pointer-events-none overflow-hidden">
-  <div
-    className="absolute inset-0"
-    style={{
-      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1), transparent)",
-      animation: "shimmer 3s linear infinite",
-    }}
-  />
-</div>
+// widgets/Map/ArmyOverlay/index.tsx
+
+// 全ての兵の位置をSetに変換（衝突チェック用）
+const allTroopsSet = new Set(
+  placedTroops.map((troop) => `${troop.x},${troop.y}`)
+);
+
+const findBestLabelPosition = (): { x: number; y: number } => {
+  // 各方向で、2マス先のエリアに他の兵がいるかチェック
+  const checkDirection = (
+    startX: number,
+    startY: number,
+    width: number,
+    height: number
+  ): number => {
+    let count = 0;
+    for (let x = startX; x < startX + width; x++) {
+      for (let y = startY; y < startY + height; y++) {
+        if (allTroopsSet.has(`${x},${y}`)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  };
+
+  // 下方向のチェック（優先度最高）
+  const bottomConflict = checkDirection(
+    Math.floor(minX),
+    maxY + 1,
+    Math.ceil(maxX - minX + 1),
+    2
+  );
+
+  // 上、右、左方向も同様にチェック
+  const topConflict = checkDirection(...);
+  const rightConflict = checkDirection(...);
+  const leftConflict = checkDirection(...);
+
+  // 最も衝突が少ない方向を選択（優先順位：下、上、右、左）
+  const conflicts = [
+    { dir: "bottom", count: bottomConflict },
+    { dir: "top", count: topConflict },
+    { dir: "right", count: rightConflict },
+    { dir: "left", count: leftConflict },
+  ];
+
+  const best = conflicts.reduce((prev, curr) =>
+    curr.count < prev.count ? curr : prev
+  );
+
+  // 選択された方向に応じて位置を返す
+  switch (best.dir) {
+    case "bottom":
+      return { x: centerX * TILE_SIZE, y: (maxY + 1) * TILE_SIZE + 8 };
+    case "top":
+      return { x: centerX * TILE_SIZE, y: minY * TILE_SIZE - 32 };
+    case "right":
+      return { x: (maxX + 1) * TILE_SIZE + 8, y: ... };
+    case "left":
+      return { x: minX * TILE_SIZE - 8, y: ... };
+  }
+};
 ```
-
-**変更点:**
-- ✅ `ease-in-out` → `linear` に変更（等速で流れる）
-- ✅ `overflow-hidden` を追加（はみ出さないように）
-- ✅ `-translate-x-full` などのクラスを削除してCSSアニメーションに一元化
-
-**2. PopoverContent - 位置の調整**
-
-```tsx
-<PopoverContent
-  side="top"          // 上側に開く
-  align="center"      // 中央揃え
-  sideOffset={10}     // トリガーから10px離す
-  // ...
->
-```
-
-**3. TroopCard - shimmerエフェクトの無限ループ化**
-
-```tsx
-{/* Shimmer effect - 無限ループ */}
-<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 overflow-hidden">
-  <div
-    className="absolute inset-0"
-    style={{
-      background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6), transparent)`,
-      filter: "blur(8px)",
-      animation: "shimmer 2s linear infinite",
-    }}
-  />
-</div>
-```
-
-**変更点:**
-- ✅ `animation: "shimmer 2s linear infinite"` を追加
-- ✅ `overflow-hidden` を追加
-- ✅ `transition-transform` などを削除してCSSアニメーションに統一
 
 #### 改善ポイント
 
-**きらりエフェクト:**
-- ✅ **無限ループ**: `infinite` で永遠に流れ続ける
-- ✅ **等速**: `linear` で一定速度で流れる
-- ✅ **途切れない**: `overflow-hidden` ではみ出しを防ぐ
-- ✅ **App.cssのkeyframes**: 既に定義済みの `@keyframes shimmer` を使用
+- ✅ 軍の周囲 4 方向（下、上、右、左）で 2 マス分のエリアをチェック
+- ✅ 各方向に他の兵がどれだけいるかをカウント
+- ✅ 最も衝突が少ない方向を自動選択
+- ✅ 優先順位：下（最も自然） → 上 → 右 → 左
+- ✅ 全ての兵の位置を考慮（他の軍の兵も含む）
+- ✅ 動的に最適な位置を決定するため、どんな配置でも重なりにくい
 
-**ポップオーバー位置:**
-- ✅ **上側に開く**: `side="top"` でデフォルトを上側に
-- ✅ **中央揃え**: `align="center"` で中央配置
-- ✅ **適度な距離**: `sideOffset={10}` で10px離す
-- ✅ **自動調整**: 上側にスペースがない場合は自動的に下側に開く
+#### ラベル配置位置
 
-#### 視覚効果
+- **下**: 軍の下部中央、下端から 8px 下
+- **上**: 軍の上部中央、上端から 32px 上
+- **右**: 軍の右側中央、右端から 8px 右
+- **左**: 軍の左側中央、左端から 8px 左
 
-- ArmyPopoverは常にきらりと光が流れ続ける
-- TroopCardはホバー時にきらりと光が流れ続ける
-- ポップオーバーは選択範囲の上側に表示される
+#### UX
 
----
-
-### 18. きらりエフェクトの輝度調整とポップオーバー位置の修正
-
-#### 要求
-
-- きらりエフェクトが光りすぎ → 控えめに調整
-- ポップオーバーの位置が治っていない → より確実に上側に表示
-
-#### 実装内容
-
-**1. ArmyPopover - shimmerエフェクトを控えめに**
-
-```tsx
-{/* Shimmer effect - 無限ループ（控えめ） */}
-<div className="absolute inset-0 pointer-events-none overflow-hidden">
-  <div
-    className="absolute inset-0"
-    style={{
-      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05), transparent)",
-      animation: "shimmer 4s linear infinite",
-    }}
-  />
-</div>
-```
-
-**変更点:**
-- ✅ 不透明度を下げる: `0.1, 0.2` → `0.05, 0.1`（半分に）
-- ✅ 速度を遅くする: `3s` → `4s`（よりゆっくり）
-
-**2. TroopCard - shimmerエフェクトを控えめに**
-
-```tsx
-{/* Shimmer effect - 無限ループ（控えめ） */}
-<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 overflow-hidden">
-  <div
-    className="absolute inset-0"
-    style={{
-      background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.3), transparent)`,
-      filter: "blur(8px)",
-      animation: "shimmer 3s linear infinite",
-    }}
-  />
-</div>
-```
-
-**変更点:**
-- ✅ 不透明度を下げる: `0.6, 0.9` → `0.3, 0.5`（約半分に）
-- ✅ 速度を遅くする: `2s` → `3s`（よりゆっくり）
-
-**3. PopoverContent - 位置の調整を強化**
-
-```tsx
-<PopoverContent
-  side="top"                // 上側に開く
-  align="center"            // 中央揃え
-  sideOffset={20}           // トリガーから20px離す（10→20に増加）
-  collisionPadding={20}     // 衝突検知の余白を20pxに設定
->
-```
-
-**変更点:**
-- ✅ `sideOffset`: `10` → `20`（より上に）
-- ✅ `collisionPadding`: `20` を追加（画面端との衝突を避ける）
-
-#### 改善ポイント
-
-**きらりエフェクト:**
-- ✅ **控えめな輝度**: 不透明度を約半分に下げて眩しさを軽減
-- ✅ **ゆっくりした動き**: アニメーション速度を遅くして落ち着いた印象
-- ✅ **無限ループ維持**: `infinite` で永遠に流れ続ける
-
-**ポップオーバー位置:**
-- ✅ **より上に表示**: `sideOffset` を20pxに増やして選択範囲から離す
-- ✅ **衝突検知**: `collisionPadding` で画面端との衝突を避ける
-- ✅ **中央揃え**: `align="center"` で中央に配置
-
-#### 視覚効果
-
-- ArmyPopoverのきらりエフェクトがより上品で控えめに
-- TroopCardのホバー時のきらりエフェクトも控えめで洗練された印象
-- ポップオーバーが選択範囲の上側に確実に表示される
+- 軍を分割しても、ラベルが自動的に空いている方向に配置される
+- 複数の軍が密集していても、ラベルが重なりにくい
+- 視認性が向上し、どの軍がどこにあるか明確になる
 
 ---
 
-### 19. 汎用マップエフェクトシステムの実装
+### 25. 軍ごとに自動的に色を割り当てるシステム
 
 #### 要求
 
-- 向き変更や攻撃受けなどのアクション時に、手軽にエフェクトを呼び出せる仕組み
-- フラグをONにすると指定されたエフェクトが自動的に発動
-- エフェクトの種類:
-  - 向き変更: じわっと滲み出る黒い発光（特定の方向）
-  - 攻撃を受ける: 早い脈動で赤く発光（特定の方向）
+- 軍が多くなると、隣り合った軍のボーダーが重なってどちらの軍かわからなくなる
+- 軍ごとに色を変えたい
+- 色は自動で決まり、その軍の象徴的なカラーとして様々なところで使われる
+- 色マスター（敵は全て赤想定なので赤以外の色）を用意
+- 軍のステートとして色を持つ
 
 #### 実装内容
 
-**1. states/battle.ts - エフェクト定数と型定義**
+**1. カラーマスターの定義**
 
 ```typescript
-// マップエフェクトの種類
-export const MAP_EFFECT = {
-  NONE: "NONE",
-  DIRECTION_CHANGE: "DIRECTION_CHANGE", // 向き変更
-  UNDER_ATTACK: "UNDER_ATTACK", // 攻撃を受ける
+// states/army.ts
+
+export const ARMY_COLORS = {
+  BLUE: {
+    name: "青",
+    border: "rgba(59, 130, 246, 0.8)", // blue-500
+    background: "rgba(59, 130, 246, 0.95)",
+    shadow: "rgba(59, 130, 246, 0.4)",
+  },
+  GREEN: {
+    name: "緑",
+    border: "rgba(34, 197, 94, 0.8)", // green-500
+    background: "rgba(34, 197, 94, 0.95)",
+    shadow: "rgba(34, 197, 94, 0.4)",
+  },
+  YELLOW: {
+    name: "黄",
+    border: "rgba(234, 179, 8, 0.8)", // yellow-500
+    background: "rgba(234, 179, 8, 0.95)",
+    shadow: "rgba(234, 179, 8, 0.4)",
+  },
+  PURPLE: {
+    name: "紫",
+    border: "rgba(168, 85, 247, 0.8)", // purple-500
+    background: "rgba(168, 85, 247, 0.95)",
+    shadow: "rgba(168, 85, 247, 0.4)",
+  },
+  CYAN: {
+    name: "シアン",
+    border: "rgba(6, 182, 212, 0.8)", // cyan-500
+    background: "rgba(6, 182, 212, 0.95)",
+    shadow: "rgba(6, 182, 212, 0.4)",
+  },
+  ORANGE: {
+    name: "オレンジ",
+    border: "rgba(249, 115, 22, 0.8)", // orange-500
+    background: "rgba(249, 115, 22, 0.95)",
+    shadow: "rgba(249, 115, 22, 0.4)",
+  },
+  PINK: {
+    name: "ピンク",
+    border: "rgba(236, 72, 153, 0.8)", // pink-500
+    background: "rgba(236, 72, 153, 0.95)",
+    shadow: "rgba(236, 72, 153, 0.4)",
+  },
+  INDIGO: {
+    name: "藍",
+    border: "rgba(99, 102, 241, 0.8)", // indigo-500
+    background: "rgba(99, 102, 241, 0.95)",
+    shadow: "rgba(99, 102, 241, 0.4)",
+  },
 } as const;
 
-export type MapEffect = {
-  type: MapEffectType;
-  direction?: "UP" | "DOWN" | "LEFT" | "RIGHT";
-  timestamp: number; // 自動クリア用
+export type ArmyColorKey = keyof typeof ARMY_COLORS;
+export type ArmyColor = (typeof ARMY_COLORS)[ArmyColorKey];
+```
+
+**2. Army の型に color プロパティを追加**
+
+```typescript
+export type Army = {
+  id: string;
+  name: string;
+  morale: number;
+  direction: ArmyDirection;
+  positions: Array<{ x: number; y: number }>;
+  color: ArmyColorKey; // 軍の象徴カラー
 };
 ```
 
-**2. states/state.ts - Redux stateに追加**
+**3. 軍作成時に自動的に色を割り当て**
 
 ```typescript
-export type AppState = {
-  // ...既存の状態
-  mapEffect: MapEffect | null;
-};
-```
+// states/slice.ts
 
-**3. states/slice.ts - アクション定義**
+confirmArmy: (state) => {
+  if (state.editingArmy) {
+    // 既に使用されている色を取得
+    const usedColors = new Set(state.armies.map((army) => army.color));
 
-```typescript
-// ユーザーがマップエフェクトを発火する
-triggerMapEffect: (
-  state,
-  action: PayloadAction<{
-    type: MapEffectType;
-    direction?: "UP" | "DOWN" | "LEFT" | "RIGHT";
-  }>
-) => {
-  state.mapEffect = {
-    type: action.payload.type,
-    direction: action.payload.direction,
-    timestamp: Date.now(),
-  };
+    // カラーマスターから未使用の色を探す
+    const availableColors = (
+      Object.keys(ARMY_COLORS) as Array<keyof typeof ARMY_COLORS>
+    ).filter((colorKey) => !usedColors.has(colorKey));
+
+    // 未使用の色がある場合はその最初の色、なければ最初の色を使用（ループ）
+    const assignedColor =
+      availableColors.length > 0
+        ? availableColors[0]
+        : (Object.keys(ARMY_COLORS)[0] as keyof typeof ARMY_COLORS);
+
+    const newArmy: Army = {
+      id: `army-${Date.now()}`,
+      name: state.editingArmy.name,
+      morale: state.editingArmy.morale,
+      direction: state.editingArmy.direction,
+      positions: state.editingArmy.positions,
+      color: assignedColor,
+    };
+    state.armies.push(newArmy);
+  }
 },
-
-// マップエフェクトをクリアする
-clearMapEffect: (state) => {
-  state.mapEffect = null;
-},
 ```
 
-**4. widgets/Map/MapEffectOverlay.tsx - エフェクトオーバーレイ**
-
-エフェクトタイプと方向に応じた発光を動的に生成:
-
-```typescript
-const getEffectStyle = (effect: MapEffect): React.CSSProperties => {
-  switch (effect.type) {
-    case MAP_EFFECT.DIRECTION_CHANGE:
-      return {
-        boxShadow: getDirectionalShadow(effect.direction, "0, 0, 0", "0.6"),
-        animation: "direction-change-glow 1.5s ease-out forwards",
-      };
-
-    case MAP_EFFECT.UNDER_ATTACK:
-      return {
-        boxShadow: getDirectionalShadow(effect.direction, "239, 68, 68", "0.8"),
-        animation: "under-attack-pulse 0.4s ease-in-out 4",
-      };
-  }
-};
-
-const getDirectionalShadow = (
-  direction: "UP" | "DOWN" | "LEFT" | "RIGHT" | undefined,
-  rgbColor: string,
-  opacity: string
-): string => {
-  switch (direction) {
-    case "UP":
-      return `inset 0 100px 80px -40px rgba(${rgbColor}, ${opacity})`;
-    case "DOWN":
-      return `inset 0 -100px 80px -40px rgba(${rgbColor}, ${opacity})`;
-    case "LEFT":
-      return `inset 100px 0 80px -40px rgba(${rgbColor}, ${opacity})`;
-    case "RIGHT":
-      return `inset -100px 0 80px -40px rgba(${rgbColor}, ${opacity})`;
-  }
-};
-```
-
-自動クリア機能:
-
-```typescript
-useEffect(() => {
-  if (!mapEffect) return;
-
-  const duration = getDuration(mapEffect.type);
-  const timer = setTimeout(() => {
-    dispatch(clearMapEffect());
-  }, duration);
-
-  return () => clearTimeout(timer);
-}, [mapEffect, dispatch]);
-```
-
-**5. App.css - アニメーション定義**
-
-```css
-/* 向き変更エフェクト: じわっと滲み出る黒い発光 */
-@keyframes direction-change-glow {
-  0% {
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-/* 攻撃を受けるエフェクト: 早い脈動で赤く発光 */
-@keyframes under-attack-pulse {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-```
-
-**6. widgets/Map/index.tsx - BattleMapに統合**
+**4. ArmyOverlay で色を使用**
 
 ```tsx
-{/* マップエフェクトオーバーレイ - 攻撃や向き変更のエフェクト */}
-<MapEffectOverlay />
+// widgets/Map/ArmyOverlay/index.tsx
 
-{/* サイバーグロウオーバーレイ - マップの前面 */}
-<div className="absolute inset-0 z-50" ... />
+{troopsInArmy.map((troop) => {
+  // 軍の色を取得
+  const armyColor = ARMY_COLORS[army.color];
+
+  const borderStyle = {
+    // ...
+    borderTop: !hasTop ? `3px solid ${armyColor.border}` : "none",
+    borderBottom: !hasBottom ? `3px solid ${armyColor.border}` : "none",
+    borderLeft: !hasLeft ? `3px solid ${armyColor.border}` : "none",
+    borderRight: !hasRight ? `3px solid ${armyColor.border}` : "none",
+    boxShadow: `0 0 12px ${armyColor.shadow}`,
+  };
+  // ...
+})}
+
+{/* ラベルの背景色も軍の色を使用 */}
+<div style={{
+  backgroundColor: ARMY_COLORS[army.color].background,
+  boxShadow: `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px ${ARMY_COLORS[army.color].shadow}`,
+}}>
 ```
 
-#### 使い方
+#### 改善ポイント
 
-**向き変更時:**
+- ✅ 8 色のカラーマスター（青、緑、黄、紫、シアン、オレンジ、ピンク、藍）
+- ✅ 赤は敵用として除外
+- ✅ 各色に border、background、shadow の値を定義
+- ✅ 軍作成時に自動的に未使用の色を割り当て
+- ✅ 8 個以上の軍を作成した場合は色がループ
+- ✅ ボーダーとラベルの両方で色を使用
+- ✅ 将来的に他の箇所でも軍の色を使用可能
+
+#### UX
+
+- 各軍が異なる色で表示される
+- 隣り合った軍でも色が異なるため、どちらの軍か一目でわかる
+- 色が軍の象徴として機能し、視覚的に識別しやすい
+
+---
+
+### 26. 軍ラベルの色を暗めに調整
+
+#### 要求
+
+- 吹き出しや向きの矢印の色が白なので、色（背景）はもう少し暗めがいい
+
+#### 問題
+
+各色の背景が明るすぎて（特に黄色やシアン）、白いテキストと矢印アイコンのコントラストが低く、読みにくい場合があった。
+
+#### 修正内容
+
+**カラーマスターの背景色を暗めに調整**
 
 ```typescript
-// 軍の向きを変更
-dispatch(changeArmyDirection({ armyId, direction: "UP" }));
+// states/army.ts
 
-// エフェクトを発火
-dispatch(triggerMapEffect({
-  type: MAP_EFFECT.DIRECTION_CHANGE,
-  direction: "UP"
-}));
-
-// 1.5秒後に自動的にクリアされる
+export const ARMY_COLORS = {
+  BLUE: {
+    name: "青",
+    border: "rgba(59, 130, 246, 0.8)", // blue-500
+    background: "rgba(37, 99, 235, 0.9)", // blue-600 (darker)
+    shadow: "rgba(59, 130, 246, 0.4)",
+  },
+  GREEN: {
+    name: "緑",
+    border: "rgba(34, 197, 94, 0.8)", // green-500
+    background: "rgba(22, 163, 74, 0.9)", // green-600 (darker)
+    shadow: "rgba(34, 197, 94, 0.4)",
+  },
+  YELLOW: {
+    name: "黄",
+    border: "rgba(234, 179, 8, 0.8)", // yellow-500
+    background: "rgba(202, 138, 4, 0.9)", // yellow-600 (darker)
+    shadow: "rgba(234, 179, 8, 0.4)",
+  },
+  // 他の色も同様に暗めに調整
+};
 ```
 
-**攻撃を受けた時:**
+#### 改善ポイント
 
-```typescript
-// 下方向から攻撃を受けた
-dispatch(triggerMapEffect({
-  type: MAP_EFFECT.UNDER_ATTACK,
-  direction: "DOWN"
-}));
+- ✅ 各色を Tailwind CSS の 600 番台（より暗い色）に変更
+- ✅ 不透明度を 0.95 から 0.9 に微調整
+- ✅ 白いテキストと矢印のコントラストが向上
+- ✅ 特に黄色やシアンなどの明るい色で読みやすさが改善
+- ✅ ボーダーと影の色はそのまま維持（視認性のバランス）
 
-// 0.4秒 × 4回の脈動後、自動的にクリアされる
+#### UX
+
+- ラベルの背景が暗めになり、白いテキストがはっきり読める
+- 矢印アイコンも見やすくなる
+- 全ての色で統一感のあるコントラストが確保される
+
+---
+
+### 27. コンテキストメニューに「モードをキャンセル」を追加
+
+#### 要求
+
+- 軍選択モード、軍分割モードの時は「モードをキャンセル」をコンテキストメニューに追加してほしい
+
+#### 実装内容
+
+**コンテキストメニューに「モードをキャンセル」を追加**
+
+```tsx
+// widgets/Map/Tile/index.tsx
+
+<ContextMenuContent className="w-48">
+  {/* 準備フェーズの軍編成メニュー */}
+  {phase === BATTLE_PHASE.PREPARATION && (
+    <>
+      <ContextMenuItem onClick={() => handleContextMenu("軍選択モード")}>
+        軍選択モード
+      </ContextMenuItem>
+      {/* ... */}
+    </>
+  )}
+
+  {/* 軍選択モードまたは軍分割モードの場合は「モードをキャンセル」を表示 */}
+  {(armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+    armyFormationMode === ARMY_FORMATION_MODE.SPLIT) && (
+    <>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        onClick={() =>
+          dispatch(switchArmyFormationMode({ mode: ARMY_FORMATION_MODE.NONE }))
+        }
+      >
+        モードをキャンセル
+      </ContextMenuItem>
+    </>
+  )}
+
+  {/* その他のメニュー項目 */}
+</ContextMenuContent>
 ```
 
-#### システムの特徴
+#### 改善ポイント
 
-- ✅ **手軽な呼び出し**: `dispatch(triggerMapEffect(...))` だけで発動
-- ✅ **自動クリア**: エフェクトに応じた時間で自動的に消える
-- ✅ **方向指定**: 上下左右どの方向からのエフェクトかを指定可能
-- ✅ **拡張可能**: 新しいエフェクトタイプを追加しやすい設計
-- ✅ **パフォーマンス**: `pointer-events: none` でマップ操作を妨げない
-- ✅ **視覚的フィードバック**: ユーザーのアクションに対する明確な応答
+- ✅ 軍選択モードまたは軍分割モードの時のみ表示
+- ✅ クリックすると`armyFormationMode`を`NONE`にリセット
+- ✅ セパレーターで他のメニュー項目と区切って視覚的に分離
+- ✅ モードをキャンセルすると矩形選択もリセットされる
 
-#### エフェクトの詳細
+#### UX
 
-**DIRECTION_CHANGE（向き変更）:**
-- 色: 黒（`rgba(0, 0, 0, 0.6)`）
-- アニメーション: じわっと滲み出る（1.5秒）
-- 使用例: 軍の向きを変更した時
+**軍選択モードの場合**
 
-**UNDER_ATTACK（攻撃を受ける）:**
-- 色: 赤（`rgba(239, 68, 68, 0.8)` = red-500）
-- アニメーション: 早い脈動（0.4秒 × 4回 = 1.6秒）
-- 使用例: 敵から攻撃を受けた時
+1. 軍選択モードに切り替える
+2. マップを右クリック
+3. 「モードをキャンセル」が表示される
+4. クリックすると通常モードに戻る
 
-#### 将来の拡張性
+**軍分割モードの場合**
 
-新しいエフェクトタイプを追加する場合:
-1. `MAP_EFFECT` に定数を追加
-2. `getEffectStyle` に新しいcaseを追加
-3. App.cssにアニメーションを定義
-4. 必要に応じて `getDuration` を調整
+1. 軍内を右クリックして軍分割モードに切り替える
+2. マップを右クリック
+3. 「モードをキャンセル」が表示される
+4. クリックすると通常モードに戻る
 
-#### 実装例: 向き変更時にエフェクトを適用
+---
 
-**widgets/Map/Tile/index.tsx - handleChangeDirection**
+### 28. コンテキストメニューの重複項目を修正
 
-```typescript
-const handleChangeDirection = (direction: typeof ARMY_DIRECTION[keyof typeof ARMY_DIRECTION]) => {
-  if (belongingArmy) {
-    dispatch(changeArmyDirection({ armyId: belongingArmy.id, direction }));
+#### 問題
 
-    // 向き変更エフェクトを発火
-    dispatch(triggerMapEffect({
-      type: MAP_EFFECT.DIRECTION_CHANGE,
-      direction: direction as "UP" | "DOWN" | "LEFT" | "RIGHT",
-    }));
+- コンテキストメニューに同じモード（軍選択モード、軍分割モード）が複数表示されている
+
+#### 原因
+
+前回の修正で新しいメニュー構造を追加したが、古い重複した項目を削除していなかったため、同じメニュー項目が 2 回表示されていた。
+
+#### 修正内容
+
+**重複しているメニュー項目を削除**
+
+```tsx
+// widgets/Map/Tile/index.tsx
+
+<ContextMenuContent>
+  {/* 軍編成（軍に属している場合） */}
+  {belongingArmy && (
+    <>
+      <ContextMenuItem onClick={() => handleContextMenu("軍編成")}>
+        軍編成
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+    </>
+  )}
+
+  {/* 準備フェーズの軍編成メニュー */}
+  {phase === BATTLE_PHASE.PREPARATION && (
+    <>
+      <ContextMenuItem onClick={() => handleContextMenu("軍選択モード")}>
+        軍選択モード
+        {armyFormationMode === ARMY_FORMATION_MODE.SELECT && " ✓"}
+      </ContextMenuItem>
+
+      {belongingArmy && (
+        <ContextMenuItem onClick={() => handleContextMenu("軍分割モード")}>
+          軍分割モード
+          {armyFormationMode === ARMY_FORMATION_MODE.SPLIT && " ✓"}
+        </ContextMenuItem>
+      )}
+
+      {belongingArmy && (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>向き</ContextMenuSubTrigger>
+          {/* ... */}
+        </ContextMenuSub>
+      )}
+    </>
+  )}
+
+  {/* モードをキャンセル */}
+  {(armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+    armyFormationMode === ARMY_FORMATION_MODE.SPLIT) && (
+    <>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={() => /* ... */}>
+        モードをキャンセル
+      </ContextMenuItem>
+    </>
+  )}
+
+  {/* その他のメニュー */}
+</ContextMenuContent>
+```
+
+#### 改善ポイント
+
+- ✅ 重複していた古いメニュー項目を削除
+- ✅ 各メニュー項目が 1 回だけ表示される
+- ✅ メニュー構造が整理され、理解しやすくなった
+- ✅ 準備フェーズの条件内に軍編成関連のメニューを統合
+
+---
+
+### 29. 右クリック時のバリデーションエラーを修正
+
+#### 問題
+
+- モードをキャンセルするために何も置かれていないマスを右クリックすると「分割する軍は最低 2 体以上の兵が必要です」というエラーが表示される
+- 右クリックだけでドラッグしていない場合でも、マウスアップ時のバリデーションが実行されてしまう
+
+#### 原因
+
+`handleGlobalMouseUp`関数で、`selectedTiles`が空でもバリデーション処理が実行されていた。右クリックでコンテキストメニューを開いた場合、ドラッグしていないため`selectedTiles`は空だが、それでもバリデーションが走ってしまっていた。
+
+#### 修正内容
+
+**selectedTiles が空の場合はバリデーション処理をスキップ**
+
+```tsx
+// widgets/Map/index.tsx
+
+const handleGlobalMouseUp = () => {
+  if (
+    !isSelecting ||
+    armyFormationMode === ARMY_FORMATION_MODE.NONE ||
+    selectedTiles.length === 0 // 選択タイルがない場合はスキップ
+  )
+    return;
+
+  // 軍選択モードの場合
+  if (armyFormationMode === ARMY_FORMATION_MODE.SELECT) {
+    // バリデーション処理
+    // ...
+  }
+
+  // 軍分割モードの場合
+  if (armyFormationMode === ARMY_FORMATION_MODE.SPLIT && splittingArmyId) {
+    // バリデーション処理
+    // ...
+  }
+
+  dispatch(clearSelection());
+};
+```
+
+#### 改善ポイント
+
+- ✅ `selectedTiles.length === 0`の場合は早期リターン
+- ✅ 右クリックのみでドラッグしていない場合はバリデーションをスキップ
+- ✅ モードキャンセルのために空のマスを右クリックしてもエラーが出ない
+- ✅ 実際にドラッグして選択した場合のみバリデーションが実行される
+
+#### UX
+
+**修正前**:
+
+1. 軍分割モードに入る
+2. 空のマスを右クリック（ドラッグなし）
+3. ❌ 「分割する軍は最低 2 体以上の兵が必要です」エラーが表示される
+
+**修正後**:
+
+1. 軍分割モードに入る
+2. 空のマスを右クリック（ドラッグなし）
+3. ✅ コンテキストメニューが開き、「モードをキャンセル」を選択できる
+
+---
+
+### 30. 右クリック時の選択ドラッグを防止
+
+#### 問題
+
+- 右クリックするとやはりエラーが出てしまう
+- 前回の修正では解決しなかった
+
+#### 原因
+
+`handleMouseDown`関数で、右クリック（`button === 2`）の場合でも`beginSelectionDrag`が実行されていた。これにより、右クリック時にも選択ドラッグが開始され、その結果`selectedTiles`が設定され、`handleGlobalMouseUp`でバリデーションが実行されてしまっていた。
+
+#### 修正内容
+
+**右クリック時は選択ドラッグを開始しないように修正**
+
+```tsx
+// widgets/Map/Tile/index.tsx
+
+const handleMouseDown = (e: React.MouseEvent) => {
+  // 右クリック（button === 2）の場合は何もしない
+  if (e.button === 2) {
+    return;
+  }
+
+  if (
+    armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
+    armyFormationMode === ARMY_FORMATION_MODE.SPLIT
+  ) {
+    e.preventDefault();
+    dispatch(beginSelectionDrag({ x, y }));
   }
 };
 ```
 
-**動作:**
-1. 軍内のマスを右クリック → 「向き」→ 方向を選択
-2. 軍の向きが変更される
-3. 指定した方向からじわっと黒い発光が滲み出る（1.5秒）
-4. 自動的にエフェクトがクリアされる
+#### マウスボタンの値
+
+- `button === 0`: 左クリック
+- `button === 1`: 中クリック（ホイールクリック）
+- `button === 2`: 右クリック
+
+#### 改善ポイント
+
+- ✅ 右クリック時は選択ドラッグが開始されない
+- ✅ 左クリックでのみ矩形選択が可能
+- ✅ 右クリックでコンテキストメニューを開いてもエラーが出ない
+- ✅ `selectedTiles`が空のまま維持される
+
+#### UX
+
+**修正前**:
+
+1. 軍分割モードに入る
+2. 空のマスを右クリック
+3. ❌ 選択ドラッグが開始される
+4. ❌ マウスアップ時にバリデーションエラーが表示される
+
+**修正後**:
+
+1. 軍分割モードに入る
+2. 空のマスを右クリック
+3. ✅ 選択ドラッグは開始されない
+4. ✅ コンテキストメニューが開き、「モードをキャンセル」を選択できる
+
+---
+
+### 31. ArmyPopover の余白とタイトルを調整
+
+#### 要求
+
+- 軍編成ポップオーバーの上部に変な余白がついているので解消してほしい
+- 軍作成済みの場合は「軍編成」文言を軍名に変えてほしい
+
+#### 修正内容
+
+**1. 上部余白の削除**
+
+```tsx
+// widgets/ArmyPopover/index.tsx
+
+// 修正前
+<PopoverContent className="w-80 space-y-4 p-4" ...>
+
+// 修正後
+<PopoverContent className="w-80 p-4" ...>
+```
+
+`space-y-4`を削除することで、PopoverContent 直下の不要な余白を解消。子要素の`div`に`space-y-4`があるため、そちらで十分。
+
+**2. タイトルを軍名に変更**
+
+```tsx
+// 修正前
+<h3 className="font-bold text-lg">軍編成</h3>
+
+// 修正後
+<h3 className="font-bold text-lg">
+  {editingArmy ? editingArmy.name : "軍編成"}
+</h3>
+```
+
+#### 改善ポイント
+
+- ✅ PopoverContent の`space-y-4`を削除して上部余白を解消
+- ✅ 軍作成済み（editingArmy がある）の場合は軍名を表示
+- ✅ 新規軍編成の場合は「軍編成」を表示
+- ✅ ポップオーバーがよりコンパクトになる
+
+#### UX
+
+**新規軍編成の場合**:
+
+- タイトル: 「軍編成」
+
+**既存軍の編集の場合**:
+
+- タイトル: 軍の名前（例: 「第一軍」「本隊」など）
+
+---

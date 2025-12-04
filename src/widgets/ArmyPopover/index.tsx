@@ -7,10 +7,10 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
+  Shield,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/designs/ui/popover";
 import { Input } from "@/designs/ui/input";
-import { Progress } from "@/designs/ui/progress";
 import { Button } from "@/designs/ui/button";
 import { useAppDispatch, useAppSelector } from "@/states";
 import { closeArmyPopover, updateArmyName, confirmArmy } from "@/states/slice";
@@ -69,22 +69,6 @@ export function ArmyPopover() {
     }
   };
 
-  // 向きの日本語表記
-  const getDirectionText = () => {
-    switch (editingArmy.direction) {
-      case "UP":
-        return "上";
-      case "DOWN":
-        return "下";
-      case "LEFT":
-        return "左";
-      case "RIGHT":
-        return "右";
-      default:
-        return "上";
-    }
-  };
-
   // 選択範囲の中心座標を計算
   const centerX =
     editingArmy.positions.reduce((sum, p) => sum + p.x, 0) /
@@ -111,7 +95,7 @@ export function ArmyPopover() {
             <div style={{ width: 1, height: 1 }} />
           </PopoverTrigger>
           <PopoverContent
-            className="group w-96 relative overflow-hidden border-0 shadow-2xl"
+            className="group w-96 relative overflow-hidden border-0 shadow-2xl p-0" // p-0を追加
             side="top"
             align="center"
             sideOffset={20}
@@ -150,115 +134,114 @@ export function ArmyPopover() {
             </div>
 
             <div className="relative space-y-5">
-              {/* ヘッダー装飾 */}
-              <div className="relative -mt-2 -mx-4 px-4 py-3 bg-linear-to-r from-blue-600/30 to-cyan-600/30 border-b border-blue-500/50 backdrop-blur-sm">
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent)",
-                  }}
-                />
-                <h3 className="relative text-white font-bold text-lg text-center tracking-wider drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
-                  軍 編 成
-                </h3>
-              </div>
+              {/* ヘッダー装飾 - 背景なし、文字とラインで装飾 */}
+              <div className="relative pt-6 pb-2 px-4">
+                <div className="flex items-center justify-center gap-4">
+                  {/* 左装飾 */}
+                  <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-blue-500/50 to-blue-500" />
 
-              {/* 軍名 */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-300 flex items-center gap-2">
-                  <span className="inline-block w-1 h-4 bg-blue-500 rounded shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                  軍名
-                </label>
-                {isEditMode ? (
-                  <div className="flex gap-2">
-                    <Input
-                      value={localName}
-                      onChange={(e) => setLocalName(e.target.value)}
-                      placeholder="軍名を入力"
-                      className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner"
-                      style={{
-                        boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.2)",
-                      }}
-                      autoFocus
-                    />
-                    <Button
-                      size="icon"
-                      onClick={handleConfirm}
-                      className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
-                      style={{
-                        boxShadow: "0 0 20px rgba(16, 185, 129, 0.5)",
-                      }}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={handleCancel}
-                      className="shrink-0 border border-red-500/50 hover:bg-red-500/20 text-red-400"
-                      style={{
-                        boxShadow: "0 0 20px rgba(239, 68, 68, 0.3)",
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-xl font-bold text-white drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
-                    {editingArmy.name}
-                  </div>
-                )}
-              </div>
+                  {/* タイトル */}
+                  <h3 className="text-white font-bold text-xl tracking-widest drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]">
+                    {editingArmy.name || "軍 編 成"}
+                  </h3>
 
-              {/* 士気と向きを横並び */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* 士気 */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-blue-300 flex items-center gap-2">
-                    <span className="inline-block w-1 h-4 bg-blue-500 rounded shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                    士気
-                  </label>
-                  <div
-                    className="flex gap-1 p-3 bg-slate-800/50 rounded-lg border border-blue-500/30 backdrop-blur-sm"
-                    style={{
-                      boxShadow:
-                        "inset 0 0 20px rgba(59, 130, 246, 0.2), 0 0 10px rgba(59, 130, 246, 0.3)",
-                    }}
-                  >
-                    {Array.from({ length: MAX_MORALE }).map((_, i) => (
-                      <Flame
-                        key={i}
-                        className={`h-8 w-8 transition-all duration-300 ${
-                          i < editingArmy.morale
-                            ? "text-blue-400 fill-blue-400 animate-pulse"
-                            : "text-slate-600"
-                        }`}
-                        style={{
-                          filter:
-                            i < editingArmy.morale
-                              ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))"
-                              : "none",
-                        }}
-                      />
-                    ))}
-                  </div>
+                  {/* 右装飾 */}
+                  <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-blue-500/50 to-blue-500" />
                 </div>
 
-                {/* 向き */}
+                {/* 下部のアクセント光 */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-blue-400/50 to-transparent shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+              </div>
+
+              {/* コンテンツ部分にパディングを追加 */}
+              <div className="px-4 pb-4 space-y-5">
+                {/* 軍名 */}
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-blue-300 flex items-center gap-2">
-                    <span className="inline-block w-1 h-4 bg-blue-500 rounded shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                    向き
+                  <label className="font-bold text-xs text-blue-300 flex items-center gap-2">
+                    軍名
                   </label>
-                  <div
-                    className="p-3 bg-slate-800/50 rounded-lg border border-blue-500/30 backdrop-blur-sm"
-                    style={{
-                      boxShadow:
-                        "inset 0 0 20px rgba(59, 130, 246, 0.2), 0 0 10px rgba(59, 130, 246, 0.3)",
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
+                  {isEditMode ? (
+                    <div className="flex gap-2">
+                      <Input
+                        value={localName}
+                        onChange={(e) => setLocalName(e.target.value)}
+                        placeholder="軍名を入力"
+                        className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner"
+                        style={{
+                          boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.2)",
+                        }}
+                        autoFocus
+                      />
+                      <Button
+                        size="icon"
+                        onClick={handleConfirm}
+                        className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+                        style={{
+                          boxShadow: "0 0 20px rgba(16, 185, 129, 0.5)",
+                        }}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        onClick={handleCancel}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-xl font-bold text-white drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
+                      {editingArmy.name}
+                    </div>
+                  )}
+                </div>
+
+                {/* 士気と向きを横並び */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* 士気 */}
+                  <div className="space-y-2 flex flex-col">
+                    <label className="text-xs font-bold text-blue-300 flex items-center gap-2">
+                      士気
+                    </label>
+                    <div
+                      className="flex gap-1 p-3 bg-slate-800/50 rounded-lg border border-blue-500/30 backdrop-blur-sm flex-1 items-center justify-center"
+                      style={{
+                        boxShadow:
+                          "inset 0 0 20px rgba(59, 130, 246, 0.2), 0 0 10px rgba(59, 130, 246, 0.3)",
+                      }}
+                    >
+                      {Array.from({ length: MAX_MORALE }).map((_, i) => (
+                        <Flame
+                          key={i}
+                          className={`h-8 w-8 transition-all duration-300 ${
+                            i < editingArmy.morale
+                              ? "text-blue-400 fill-blue-400 animate-pulse"
+                              : "text-slate-600"
+                          }`}
+                          style={{
+                            filter:
+                              i < editingArmy.morale
+                                ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))"
+                                : "none",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 向き */}
+                  <div className="space-y-2 flex flex-col">
+                    <label className="text-xs font-bold text-blue-300 flex items-center gap-2">
+                      向き
+                    </label>
+                    <div
+                      className="p-3 bg-slate-800/50 rounded-lg border border-blue-500/30 backdrop-blur-sm flex-1 flex items-center justify-center"
+                      style={{
+                        boxShadow:
+                          "inset 0 0 20px rgba(59, 130, 246, 0.2), 0 0 10px rgba(59, 130, 246, 0.3)",
+                      }}
+                    >
                       <div
                         className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-500/20 border border-blue-400/50"
                         style={{
@@ -276,57 +259,73 @@ export function ArmyPopover() {
                           {getDirectionIcon()}
                         </div>
                       </div>
-                      <span className="text-xl font-bold text-white drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]">
-                        {getDirectionText()}
-                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 合計兵力 */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-300 flex items-center gap-2">
-                  <span className="inline-block w-1 h-4 bg-blue-500 rounded shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                  合計兵力
-                </label>
-                <div
-                  className="p-4 bg-slate-800/50 rounded-lg border border-blue-500/30 backdrop-blur-sm"
-                  style={{
-                    boxShadow:
-                      "inset 0 0 20px rgba(59, 130, 246, 0.2), 0 0 10px rgba(59, 130, 246, 0.3)",
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <Progress
-                      value={healthPercentage}
-                      className="flex-1 h-6 bg-slate-700"
+                {/* 合計兵力 */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-end px-1">
+                    <label className="text-xs font-bold text-green-400 flex items-center gap-2">
+                      <Shield className="w-3 h-3" /> 合計兵力
+                    </label>
+                    <span className="text-xs font-mono text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]">
+                      {Math.round(healthPercentage)}%
+                    </span>
+                  </div>
+
+                  <div className="relative bg-slate-900/30 rounded-full">
+                    {/* 背景のグリッドパターン */}
+                    <div
+                      className="absolute inset-0 rounded-full opacity-20"
                       style={{
-                        boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.3)",
+                        backgroundImage:
+                          "linear-gradient(90deg, transparent 50%, rgba(22, 163, 74, 0.5) 50%)",
+                        backgroundSize: "4px 100%",
                       }}
                     />
-                    <span
-                      className="text-lg font-bold font-mono whitespace-nowrap text-white tabular-nums"
-                      style={{
-                        textShadow: "0 0 10px rgba(59, 130, 246, 0.8)",
-                      }}
-                    >
-                      {totalHealth.toLocaleString()} /{" "}
-                      {maxHealth.toLocaleString()}
+
+                    {/* プログレスバー本体 */}
+                    <div className="relative h-6 rounded-full overflow-hidden">
+                      <div
+                        className="h-full transition-all duration-500 ease-out relative"
+                        style={{
+                          width: `${healthPercentage}%`,
+                          background:
+                            "linear-gradient(90deg, rgba(20,83,45,1) 0%, rgba(21,128,61,1) 50%, rgba(22,163,74,1) 100%)",
+                          boxShadow: "0 0 15px rgba(22, 163, 74, 0.6)",
+                        }}
+                      >
+                        {/* 光の反射（シマー） */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 数値表示 */}
+                  <div className="flex justify-end px-1">
+                    <span className="text-sm font-bold font-mono text-white drop-shadow-[0_0_5px_rgba(22,163,74,0.8)]">
+                      <span className="text-green-500">
+                        {totalHealth.toLocaleString()}
+                      </span>
+                      <span className="text-slate-600 mx-2">/</span>
+                      <span className="text-slate-400 text-xs">
+                        {maxHealth.toLocaleString()}
+                      </span>
                     </span>
                   </div>
                 </div>
-              </div>
 
-              {/* 装飾的なフッター */}
-              <div
-                className="relative -mb-2 -mx-4 h-1"
-                style={{
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent)",
-                  boxShadow: "0 0 10px rgba(59, 130, 246, 0.5)",
-                }}
-              />
+                {/* 装飾的なフッター */}
+                <div
+                  className="relative -mb-2 -mx-4 h-1"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent)",
+                    boxShadow: "0 0 10px rgba(59, 130, 246, 0.5)",
+                  }}
+                />
+              </div>
             </div>
           </PopoverContent>
         </Popover>

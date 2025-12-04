@@ -1,11 +1,13 @@
 import type { PlacedTroop } from "./placement";
+import type { Army } from "@/states/army";
 
 /**
  * 選択範囲内の兵をバリデーションする
  */
 export function validateArmySelection(
   selectedTiles: Set<string>,
-  placedTroops: PlacedTroop[]
+  placedTroops: PlacedTroop[],
+  armies: Army[] // 既存の軍リスト
 ): { isValid: boolean; errorMessage?: string } {
   // 選択範囲内の兵を抽出
   const troopsInSelection = placedTroops.filter((troop) =>
@@ -20,11 +22,94 @@ export function validateArmySelection(
     };
   }
 
-  // 2. 全ての兵が隣り合っているかチェック（連結性の確認）
+  // 2. 選択範囲内に既存の軍の兵が含まれていないかチェック
+  const isAnyTroopInArmy = troopsInSelection.some((troop) =>
+    armies.some((army) =>
+      army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
+    )
+  );
+
+  if (isAnyTroopInArmy) {
+    return {
+      isValid: false,
+      errorMessage: "選択範囲内に既に軍に所属している兵が含まれています",
+    };
+  }
+
+  // 3. 全ての兵が隣り合っているかチェック（連結性の確認）
   if (!areAllTroopsConnected(troopsInSelection)) {
     return {
       isValid: false,
       errorMessage: "軍内の兵は全て隣り合っている必要があります",
+    };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * 軍分割のバリデーション
+ */
+export function validateArmySplit(
+  selectedTiles: Set<string>,
+  army: Army,
+  placedTroops: PlacedTroop[]
+): { isValid: boolean; errorMessage?: string } {
+  // 選択範囲内の兵を抽出
+  const troopsInSelection = placedTroops.filter((troop) =>
+    selectedTiles.has(`${troop.x},${troop.y}`)
+  );
+
+  // 軍内の全兵を抽出
+  const troopsInArmy = placedTroops.filter((troop) =>
+    army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
+  );
+
+  // 1. 選択範囲が軍内に含まれているかチェック
+  const allInArmy = troopsInSelection.every((troop) =>
+    army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
+  );
+
+  if (!allInArmy) {
+    return {
+      isValid: false,
+      errorMessage: "選択範囲は軍内のマスのみ選択可能です",
+    };
+  }
+
+  // 2. 選択範囲内の兵が2以上かチェック
+  if (troopsInSelection.length < 2) {
+    return {
+      isValid: false,
+      errorMessage: "分割する軍は最低2体以上の兵が必要です",
+    };
+  }
+
+  // 3. 残りの兵が2以上かチェック
+  const remainingTroops = troopsInArmy.filter(
+    (troop) => !selectedTiles.has(`${troop.x},${troop.y}`)
+  );
+
+  if (remainingTroops.length < 2) {
+    return {
+      isValid: false,
+      errorMessage: "元の軍にも最低2体以上の兵が残る必要があります",
+    };
+  }
+
+  // 4. 選択範囲内の兵が連結しているかチェック
+  if (!areAllTroopsConnected(troopsInSelection)) {
+    return {
+      isValid: false,
+      errorMessage: "分割する軍の兵は全て隣り合っている必要があります",
+    };
+  }
+
+  // 5. 残りの兵が連結しているかチェック
+  if (!areAllTroopsConnected(remainingTroops)) {
+    return {
+      isValid: false,
+      errorMessage: "分割後の元の軍の兵も全て隣り合っている必要があります",
     };
   }
 

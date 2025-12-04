@@ -4,6 +4,7 @@ import { useAppSelector } from "@/states";
 
 export function PlacementConstraints() {
   const placedTroops = useAppSelector((state) => state.app.placedTroops);
+  const armies = useAppSelector((state) => state.app.armies);
 
   // Count troops by type
   const totalCount = placedTroops.length;
@@ -14,6 +15,7 @@ export function PlacementConstraints() {
   const isTotalLimitReached = totalCount >= 30;
   const isCavalryLimitReached = cavalryCount >= 10;
   const isGeneralLimitReached = generalCount >= 1;
+  const isArmyLimitReached = armies.length >= 9;
 
   return (
     <FloatingInfo
@@ -82,6 +84,27 @@ export function PlacementConstraints() {
                 {generalCount}
               </span>
               <span className="text-slate-600 text-sm">/ 1</span>
+            </div>
+          </div>
+
+          {/* Army Limit */}
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-slate-600 text-xs">軍数上限</span>
+            <div className="flex items-baseline gap-1">
+              <span
+                className={`text-4xl font-bold tabular-nums transition-all duration-300 ${
+                  isArmyLimitReached
+                    ? "text-red-600 animate-pulse scale-110"
+                    : "text-slate-900"
+                }`}
+                key={armies.length}
+                style={{
+                  animation: "countUp 0.3s ease-out",
+                }}
+              >
+                {armies.length}
+              </span>
+              <span className="text-slate-600 text-sm">/ 9</span>
             </div>
           </div>
         </div>
