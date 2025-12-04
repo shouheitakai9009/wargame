@@ -1798,3 +1798,310 @@ const handleMouseDown = (e: React.MouseEvent) => {
 - タイトル: 軍の名前（例: 「第一軍」「本隊」など）
 
 ---
+
+### 41. 兵ツールチップに地形効果を追加
+
+#### 要求
+
+- 兵をホバーした時に、地形による効果を表示したい
+- かかっている効果エリアに地形名、説明文、ステータス増減を表示
+- ステータスは「デフォルト値 + 増減」の形式で表示
+- 減っていれば赤色、増えていれば緑色で表示
+
+#### 実装内容
+
+**1. PlacedTroop 型に hp プロパティを追加**
+
+```typescript
+// src/lib/placement.ts
+export type PlacedTroop = {
+  x: number;
+  y: number;
+  type: SoldierType;
+  hp: number; // 兵力を追加
+  theme: { primary: string; secondary: string };
+};
+```
+
+**2. 地形効果を計算するユーティリティ関数を作成**
+
+```typescript
+// src/lib/terrainEffect.ts
+export type TerrainEffect = {
+  name: string;
+  description: string;
+  effects: Array<{
+    stat: "attack" | "defense" | "range" | "speed";
+    change: number; // 正の値は増加、負の値は減少
+    overrideValue?: number; // 指定された場合、この値に固定される
+  }>;
+};
+
+export function getTerrainEffect(
+  soldierType: SoldierType,
+  terrain: Terrain
+): TerrainEffect | null {
+  // 地形と兵種に応じた効果を計算
+}
+```
+
+**3. 地形ごとの効果実装**
+
+```typescript
+// 水: 全兵種が速さ1になり、攻撃、防御、射程が2ずつ下がる
+case TERRAIN_TYPE.WATER:
+  return {
+    name: "水",
+    description: "全身が水に浸かっている",
+    effects: [
+      { stat: "attack", change: -2 },
+      { stat: "defense", change: -2 },
+      { stat: "range", change: -2 },
+      { stat: "speed", change: 0, overrideValue: 1 },
+    ],
+  };
+
+// 森: 兵種によって効果が異なる
+case TERRAIN_TYPE.FOREST:
+  if (soldierType === "ARCHER") {
+    return {
+      name: "森",
+      description: "木々に視界を遮られている",
+      effects: [{ stat: "range", change: -2 }],
+    };
+  } else if (soldierType === "INFANTRY" || soldierType === "SHIELD") {
+    return {
+      name: "森",
+      description: "森の中で身を隠している",
+      effects: [
+        { stat: "attack", change: 1 },
+        { stat: "defense", change: 1 },
+      ],
+    };
+  } else if (soldierType === "CAVALRY" || soldierType === "GENERAL") {
+    return {
+      name: "森",
+      description: "森の中で動きが制限されている",
+      effects: [
+        { stat: "attack", change: -1 },
+        { stat: "defense", change: -1 },
+        { stat: "speed", change: -2 },
+      ],
+    };
+  }
+```
+
+**4. ツールチップに地形効果を表示**
+
+```tsx
+// widgets/Map/Tile/index.tsx
+
+{/* 右エリア：かかっている効果 */}
+<div className="border-l border-slate-700 pl-3 min-w-[100px]">
+  <h4 className="text-slate-400 text-xs font-medium mb-2">
+    かかっている効果
+  </h4>
+  {terrainEffect ? (
+    <div className="flex flex-col gap-2">
+      {/* 地形名 */}
+      <div className="text-white text-sm font-bold">
+        {terrainEffect.name}
+      </div>
+      {/* ステータス変化 */}
+      <div className="flex flex-col gap-1">
+        {terrainEffect.effects.map((effect) => {
+          const StatIcon = statIconMap[effect.stat];
+          const defaultValue = SOLDIER_STATS[troopOnTile.type][effect.stat];
+          return (
+            <div key={effect.stat} className="flex items-center gap-1.5 text-xs">
+              <StatIcon size={14} className={...} />
+              {effect.overrideValue !== undefined ? (
+                // 値が固定される場合（例：速度が1になる）
+                <>
+                  <span className="text-slate-400 font-mono">{defaultValue}</span>
+                  <span className="text-slate-500">→</span>
+                  <span className="text-red-400 font-bold font-mono">
+                    {effect.overrideValue}
+                  </span>
+                </>
+              ) : (
+                // 増減の場合
+                <span className="text-red-400 font-bold font-mono">
+                  {effect.change}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : (
+    <p className="text-slate-500 text-xs">なし</p>
+  )}
+</div>
+```
+
+#### 改善ポイント
+
+- ✅ 地形ごとの効果を battle-rule.md に基づいて正確に実装
+- ✅ 水：全兵種の攻撃、防御、射程が -2、速度は兵種ごとに変化量を計算
+- ✅ 森：弓兵は射程 -2、歩兵/盾兵は攻撃+防御+1、騎兵/将軍は攻撃+防御-1、速度-2
+- ✅ 草・山：効果なし
+- ✅ ステータス増減を視覚的に表示（赤=減少、緑=増加）
+- ✅ シンプルな表示：ステータスアイコンと変化量のみ
+- ✅ すべての効果を変化量で統一的に表示（「+2」「-2」など）
+
+#### 地形効果の詳細
+
+**水**:
+- [剣] -2、[盾] -2、[的] -2、[炎] 変化量（兵種による）
+  - 歩兵: -2
+  - 騎兵: -4
+  - 将軍: -1
+
+**森（弓兵）**:
+- [的] -2
+
+**森（歩兵・盾兵）**:
+- [剣] +1、[盾] +1
+
+**森（騎兵・将軍）**:
+- [剣] -1、[盾] -1、[炎] -2
+
+**草・山**:
+- なし
+
+#### UX
+
+- 兵をホバーすると、ツールチップの右エリアに地形効果が表示される
+- 地形名とステータスアイコン+変化量のみのシンプルな表示
+- ステータスの増減が色で視覚的に理解できる（赤=減少、緑=増加）
+- すべてのステータスが変化量のみで統一的に表示される
+- 効果がない地形では「なし」と表示される
+
+#### 表示例
+
+**水の上の歩兵（速度3）**:
+```
+かかっている効果
+水
+[剣] -2
+[盾] -2
+[的] -2
+[炎] -2
+```
+
+**水の上の騎兵（速度5）**:
+```
+かかっている効果
+水
+[剣] -2
+[盾] -2
+[的] -2
+[炎] -4
+```
+
+**森の中の弓兵**:
+```
+かかっている効果
+森
+[的] -2
+```
+
+**森の中の歩兵**:
+```
+かかっている効果
+森
+[剣] +1
+[盾] +1
+```
+
+---
+
+### 42. 左側のステータスに地形効果の変化量を追加
+
+#### 要求
+
+- 左側のステータス表示に、地形効果による変化量を追加したい
+
+#### 実装内容
+
+**各ステータスに地形効果の変化量を表示**
+
+```tsx
+// widgets/Map/Tile/index.tsx
+
+{/* ステータス */}
+<div className="grid grid-cols-2 gap-2 text-xs">
+  <div className="flex items-center gap-1 text-slate-300">
+    <Swords size={12} className="text-red-400" />
+    <span>攻撃:</span>
+    <span className="font-bold text-white">
+      {SOLDIER_STATS[troopOnTile.type].attack}
+    </span>
+    {terrainEffect &&
+      terrainEffect.effects.find((e) => e.stat === "attack") && (
+        <span className="text-green-400 font-bold text-xs">
+          +{terrainEffect.effects.find((e) => e.stat === "attack")!.change}
+        </span>
+      )}
+  </div>
+  {/* 他のステータスも同様 */}
+</div>
+```
+
+#### 改善ポイント
+
+- ✅ 各ステータスの横に地形効果による変化量を表示
+- ✅ 変化量がある場合のみ表示（効果がない場合は非表示）
+- ✅ 色分けで視覚化（緑=増加、赤=減少）
+- ✅ 左側のステータスと右側の効果詳細の両方で確認できる
+
+#### 表示例
+
+**水の上の歩兵**:
+
+左エリア:
+```
+攻撃: 3 -2
+防御: 3 -2
+射程: 1 -2
+速度: 3 -2
+```
+
+右エリア:
+```
+かかっている効果
+水
+[剣] -2
+[盾] -2
+[的] -2
+[炎] -2
+```
+
+**森の中の歩兵**:
+
+左エリア:
+```
+攻撃: 3 +1
+防御: 3 +1
+射程: 1
+速度: 3
+```
+
+右エリア:
+```
+かかっている効果
+森
+[剣] +1
+[盾] +1
+```
+
+#### UX
+
+- 左側のステータスで現在のステータス値と変化量が一目で分かる
+- 右側の効果詳細で地形名と全ての効果を確認できる
+- 地形効果がないステータスは変化量が表示されない（シンプル）
+- 色分けで増減が直感的に理解できる
+
+---

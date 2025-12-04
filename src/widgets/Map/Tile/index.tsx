@@ -28,9 +28,10 @@ import {
   canPlaceTroop,
   isPositionOccupied,
 } from "@/lib/placement";
-import type { SoldierType } from "@/states/soldier";
+import { SOLDIER_STATS, type SoldierType } from "@/states/soldier";
 import type { LucideIcon } from "lucide-react";
-import { Crown, Swords, Target, Shield, Flame } from "lucide-react";
+import { Crown, Swords, Target, Shield, Flame, TrendingUp, TrendingDown } from "lucide-react";
+import { getTerrainEffect } from "@/lib/terrainEffect";
 import { useDrop } from "@react-aria/dnd";
 import {
   ContextMenu,
@@ -42,6 +43,12 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from "@/designs/ui/context-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/designs/ui/tooltip";
 
 type Props = {
   x: number;
@@ -106,6 +113,12 @@ export const Tile = memo(
               return;
             }
 
+            // 騎兵は水マスに配置できない
+            if (data.type === "CAVALRY" && terrain.type === TERRAIN_TYPE.WATER) {
+              dispatch(showError("騎兵は水マスに配置できません"));
+              return;
+            }
+
             if (!canPlaceTroop(data.type, placedTroops)) {
               // Determine reason for failure
               const total = placedTroops.length;
@@ -138,6 +151,7 @@ export const Tile = memo(
                 x,
                 y,
                 type: data.type,
+                hp: 1000, // MAX_SOLDIER_HP
                 theme: data.theme,
               })
             );
@@ -303,10 +317,276 @@ export const Tile = memo(
       </div>
     );
 
+    // 地形効果を取得
+    const terrainEffect = troopOnTile
+      ? getTerrainEffect(troopOnTile.type, terrain)
+      : null;
+
+    // ステータスアイコンマップ
+    const statIconMap: Record<string, LucideIcon> = {
+      attack: Swords,
+      defense: Shield,
+      range: Target,
+      speed: Flame,
+    };
+
+    // ステータス名マップ
+    const statNameMap: Record<string, string> = {
+      attack: "攻撃",
+      defense: "防御",
+      range: "射程",
+      speed: "速度",
+    };
+
+    // 兵がいる場合はツールチップでラップ
+    const wrappedContent = troopOnTile ? (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{tileContent}</TooltipTrigger>
+          <TooltipContent
+            className="p-0 border-0 bg-transparent shadow-none"
+            style={{ pointerEvents: "none" }}
+          >
+            <div className="flex gap-2 bg-slate-900/95 border border-slate-700 rounded-lg p-3 shadow-xl">
+              {/* 左エリア：兵種情報 */}
+              <div className="flex flex-col gap-2 min-w-[200px]">
+                {/* 兵種アイコンと名前 */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{
+                      backgroundColor: troopOnTile.theme.primary,
+                    }}
+                  >
+                    {TroopIcon && <TroopIcon size={18} className="text-white" />}
+                  </div>
+                  <span className="text-white font-bold">
+                    {SOLDIER_STATS[troopOnTile.type].name}
+                  </span>
+                </div>
+
+                {/* 兵力プログレスバー */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-end px-1">
+                    <label className="text-emerald-300 text-xs font-medium flex items-center gap-1">
+                      <Shield size={12} /> 兵力
+                    </label>
+                    <span className="text-emerald-400 text-xs font-bold">
+                      {Math.round((troopOnTile.hp / 1000) * 100)}%
+                    </span>
+                  </div>
+                  <div className="relative bg-slate-900/30 rounded-full">
+                    {/* 背景グリッド */}
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(90deg, transparent 50%, rgba(59, 130, 246, 0.5) 50%)",
+                        backgroundSize: "4px 100%",
+                      }}
+                    />
+                    {/* プログレスバー本体 */}
+                    <div
+                      className="relative h-4 rounded-full overflow-hidden transition-all duration-300"
+                      style={{
+                        width: `${(troopOnTile.hp / 1000) * 100}%`,
+                        background:
+                          "linear-gradient(90deg, rgba(20,83,45,1) 0%, rgba(21,128,61,1) 50%, rgba(22,163,74,1) 100%)",
+                        boxShadow: "0 0 15px rgba(16, 185, 129, 0.6)",
+                      }}
+                    >
+                      {/* 光沢ハイライト */}
+                      <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-full" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end px-1 gap-1 text-xs">
+                    <span className="text-green-400 font-bold">
+                      {troopOnTile.hp}
+                    </span>
+                    <span className="text-slate-500">/</span>
+                    <span className="text-slate-400">1000</span>
+                  </div>
+                </div>
+
+                {/* ステータス */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1 text-slate-300">
+                    <Swords size={12} className="text-red-400" />
+                    <span>攻撃:</span>
+                    <span className="font-bold text-white">
+                      {SOLDIER_STATS[troopOnTile.type].attack}
+                    </span>
+                    {terrainEffect &&
+                      terrainEffect.effects.find((e) => e.stat === "attack") && (
+                        <span
+                          className={`font-bold text-xs ${
+                            terrainEffect.effects.find((e) => e.stat === "attack")!
+                              .change > 0
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {terrainEffect.effects.find((e) => e.stat === "attack")!
+                            .change > 0
+                            ? "+"
+                            : ""}
+                          {
+                            terrainEffect.effects.find((e) => e.stat === "attack")!
+                              .change
+                          }
+                        </span>
+                      )}
+                  </div>
+                  <div className="flex items-center gap-1 text-slate-300">
+                    <Shield size={12} className="text-blue-400" />
+                    <span>防御:</span>
+                    <span className="font-bold text-white">
+                      {SOLDIER_STATS[troopOnTile.type].defense}
+                    </span>
+                    {terrainEffect &&
+                      terrainEffect.effects.find((e) => e.stat === "defense") && (
+                        <span
+                          className={`font-bold text-xs ${
+                            terrainEffect.effects.find((e) => e.stat === "defense")!
+                              .change > 0
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {terrainEffect.effects.find((e) => e.stat === "defense")!
+                            .change > 0
+                            ? "+"
+                            : ""}
+                          {
+                            terrainEffect.effects.find((e) => e.stat === "defense")!
+                              .change
+                          }
+                        </span>
+                      )}
+                  </div>
+                  <div className="flex items-center gap-1 text-slate-300">
+                    <Target size={12} className="text-green-400" />
+                    <span>射程:</span>
+                    <span className="font-bold text-white">
+                      {SOLDIER_STATS[troopOnTile.type].range}
+                    </span>
+                    {terrainEffect &&
+                      terrainEffect.effects.find((e) => e.stat === "range") && (
+                        <span
+                          className={`font-bold text-xs ${
+                            terrainEffect.effects.find((e) => e.stat === "range")!
+                              .change > 0
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {terrainEffect.effects.find((e) => e.stat === "range")!
+                            .change > 0
+                            ? "+"
+                            : ""}
+                          {
+                            terrainEffect.effects.find((e) => e.stat === "range")!
+                              .change
+                          }
+                        </span>
+                      )}
+                  </div>
+                  <div className="flex items-center gap-1 text-slate-300">
+                    <Flame size={12} className="text-yellow-400" />
+                    <span>速度:</span>
+                    <span className="font-bold text-white">
+                      {SOLDIER_STATS[troopOnTile.type].speed}
+                    </span>
+                    {terrainEffect &&
+                      terrainEffect.effects.find((e) => e.stat === "speed") && (
+                        <span
+                          className={`font-bold text-xs ${
+                            terrainEffect.effects.find((e) => e.stat === "speed")!
+                              .change > 0
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {terrainEffect.effects.find((e) => e.stat === "speed")!
+                            .change > 0
+                            ? "+"
+                            : ""}
+                          {
+                            terrainEffect.effects.find((e) => e.stat === "speed")!
+                              .change
+                          }
+                        </span>
+                      )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 右エリア：かかっている効果 */}
+              <div className="border-l border-slate-700 pl-3 min-w-[100px]">
+                <h4 className="text-slate-400 text-xs font-medium mb-2">
+                  かかっている効果
+                </h4>
+                {terrainEffect ? (
+                  <div className="flex flex-col gap-2">
+                    {/* 地形名 */}
+                    <div className="text-white text-sm font-bold">
+                      {terrainEffect.name}
+                    </div>
+                    {/* ステータス変化 */}
+                    <div className="flex flex-col gap-1">
+                      {terrainEffect.effects.map((effect) => {
+                        const StatIcon = statIconMap[effect.stat];
+                        const isPositive = effect.change > 0;
+                        const isNegative = effect.change < 0;
+
+                        return (
+                          <div
+                            key={effect.stat}
+                            className="flex items-center gap-1.5 text-xs"
+                          >
+                            <StatIcon
+                              size={14}
+                              className={
+                                isPositive
+                                  ? "text-green-400"
+                                  : isNegative
+                                  ? "text-red-400"
+                                  : "text-slate-400"
+                              }
+                            />
+                            <span
+                              className={`font-bold font-mono ${
+                                isPositive
+                                  ? "text-green-400"
+                                  : isNegative
+                                  ? "text-red-400"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              {isPositive ? "+" : ""}
+                              {effect.change}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-xs">なし</p>
+                )}
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    ) : (
+      tileContent
+    );
+
     // 常にコンテキストメニューを表示
     return (
       <ContextMenu>
-        <ContextMenuTrigger asChild>{tileContent}</ContextMenuTrigger>
+        <ContextMenuTrigger asChild>{wrappedContent}</ContextMenuTrigger>
         <ContextMenuContent>
           {/* 軍に属している場合は「軍編成」を最上部に表示 */}
           {belongingArmy && (

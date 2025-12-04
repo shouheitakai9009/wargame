@@ -5,6 +5,7 @@ export type PlacedTroop = {
   x: number;
   y: number;
   type: SoldierType;
+  hp: number;
   theme: {
     primary: string;
     secondary: string;
