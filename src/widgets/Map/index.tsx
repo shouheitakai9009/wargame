@@ -5,7 +5,13 @@ import { MAP_SIZE, TILE_SIZE } from "@/states/map";
 import { PlacementConstraints } from "./PlacementConstraints";
 import { useAppSelector, useAppDispatch } from "@/states";
 import { ARMY_FORMATION_MODE } from "@/states/battle";
-import { showError, endSelectionDrag, openArmyPopover } from "@/states/slice";
+import {
+  showError,
+  endSelectionDrag,
+  openArmyPopover,
+  zoomInMap,
+  zoomOutMap,
+} from "@/states/slice";
 import { validateArmySelection } from "@/lib/armyValidation";
 import { ArmyPopover } from "../ArmyPopover";
 import { ArmyOverlay } from "./ArmyOverlay";
@@ -26,6 +32,8 @@ export const BattleMap = () => {
     (state) => state.app.selectionDragCurrent
   );
   const placedTroops = useAppSelector((state) => state.app.placedTroops);
+
+  const mapZoomRatio = useAppSelector((state) => state.app.mapZoomRatio);
 
   // 軍選択モード時はマップのドラッグを無効化
   const isMapDragDisabled = armyFormationMode === ARMY_FORMATION_MODE.SELECT;
@@ -82,6 +90,14 @@ export const BattleMap = () => {
     setIsDragging(false);
   };
 
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY > 0) {
+      dispatch(zoomInMap());
+    } else {
+      dispatch(zoomOutMap());
+    }
+  };
+
   // グローバルなマウスアップイベントで選択範囲のバリデーション
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -129,6 +145,7 @@ export const BattleMap = () => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onWheel={handleWheel}
       style={{
         cursor: isMapDragDisabled ? "default" : "move",
         userSelect: isMapDragDisabled ? "none" : "auto",
@@ -140,6 +157,7 @@ export const BattleMap = () => {
           transform: `translate(${position.x}px, ${position.y}px)`,
           width: MAP_SIZE * TILE_SIZE,
           height: MAP_SIZE * TILE_SIZE,
+          scale: mapZoomRatio,
         }}
       >
         {/* タイルグリッド */}

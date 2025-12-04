@@ -23,6 +23,9 @@ export type AppState = {
   preparationTab: PreparationTab;
   rightSidebarTab: RightSidebarTab;
 
+  // マップのズーム倍率
+  mapZoomRatio: number;
+
   // 配置された兵
   placedTroops: PlacedTroop[];
   isDraggingTroop: boolean;
@@ -56,6 +59,7 @@ export type AppState = {
 export const initialState: AppState = {
   phase: BATTLE_PHASE.PREPARATION,
   turn: 0,
+  mapZoomRatio: 1,
   preparationTab: PREPARATION_TAB.DEPLOY_SOLDIER,
   rightSidebarTab: RIGHT_SIDEBAR_TAB.BATTLE_LOG,
   placedTroops: [],

@@ -9,6 +9,7 @@ import {
 import { initialState } from "./state";
 import type { Army } from "./army";
 import { ARMY_DIRECTION } from "./army";
+import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from "./map";
 
 export const slice = createSlice({
   name: "app",
@@ -36,6 +37,15 @@ export const slice = createSlice({
       state.turn = initialState.turn;
       state.preparationTab = initialState.preparationTab;
       state.rightSidebarTab = initialState.rightSidebarTab;
+    },
+
+    zoomOutMap: (state) => {
+      if (state.mapZoomRatio <= MIN_ZOOM) return;
+      state.mapZoomRatio -= ZOOM_STEP;
+    },
+    zoomInMap: (state) => {
+      if (state.mapZoomRatio >= MAX_ZOOM) return;
+      state.mapZoomRatio += ZOOM_STEP;
     },
 
     // ユーザーが準備中のタブを切り替える
@@ -148,7 +158,7 @@ export const slice = createSlice({
           id: `army-${Date.now()}`,
           name: state.editingArmy.name,
           morale: state.editingArmy.morale,
-          direction: state.editingArmy.direction as any,
+          direction: state.editingArmy.direction,
           positions: state.editingArmy.positions,
         };
         state.armies.push(newArmy);
@@ -180,6 +190,8 @@ export const {
   closeArmyPopover,
   updateArmyName,
   confirmArmy,
+  zoomInMap,
+  zoomOutMap,
 } = slice.actions;
 
 export default slice.reducer;
