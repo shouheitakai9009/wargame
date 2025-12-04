@@ -123,3 +123,57 @@
     background: var(--color-scrollbar-thumb-hover);
   }
 }
+
+/* サイバーグリッドアニメーション */
+@keyframes cyber-grid-glow {
+  0% {
+    box-shadow: inset 0 0 60px rgba(59, 130, 246, 0.15),
+      inset 0 0 30px rgba(59, 130, 246, 0.1), 0 0 40px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 80px rgba(59, 130, 246, 0.25),
+      inset 0 0 50px rgba(59, 130, 246, 0.2), 0 0 60px rgba(59, 130, 246, 0.35);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    box-shadow: inset 0 0 60px rgba(59, 130, 246, 0.15),
+      inset 0 0 30px rgba(59, 130, 246, 0.1), 0 0 40px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* マップエフェクトアニメーション */
+
+/* 向き変更エフェクト: じわっと滲み出る黒い発光 */
+@keyframes direction-change-glow {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 攻撃を受けるエフェクト: 早い脈動で赤く発光 */
+@keyframes under-attack-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}

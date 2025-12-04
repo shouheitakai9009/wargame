@@ -5,10 +5,12 @@ import {
   type PreparationTab,
   type RightSidebarTab,
   type ArmyFormationMode,
+  type BattleMoveMode,
+  type MapEffectType,
 } from "./battle";
 import { initialState } from "./state";
 import type { Army } from "./army";
-import { ARMY_DIRECTION } from "./army";
+import { ARMY_DIRECTION, type ArmyDirection } from "./army";
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from "./map";
 
 export const slice = createSlice({
@@ -166,6 +168,42 @@ export const slice = createSlice({
         state.editingArmy = null;
       }
     },
+
+    // ユーザーが軍の向きを変更する
+    changeArmyDirection: (
+      state,
+      action: PayloadAction<{ armyId: string; direction: ArmyDirection }>
+    ) => {
+      const army = state.armies.find((a) => a.id === action.payload.armyId);
+      if (army) {
+        army.direction = action.payload.direction;
+      }
+    },
+
+    // ユーザーが移動モードを切り替える
+    switchBattleMoveMode: (state, action: PayloadAction<BattleMoveMode>) => {
+      state.battleMoveMode = action.payload;
+    },
+
+    // ユーザーがマップエフェクトを発火する
+    triggerMapEffect: (
+      state,
+      action: PayloadAction<{
+        type: MapEffectType;
+        direction?: "UP" | "DOWN" | "LEFT" | "RIGHT";
+      }>
+    ) => {
+      state.mapEffect = {
+        type: action.payload.type,
+        direction: action.payload.direction,
+        timestamp: Date.now(),
+      };
+    },
+
+    // マップエフェクトをクリアする
+    clearMapEffect: (state) => {
+      state.mapEffect = null;
+    },
   },
 });
 
@@ -190,8 +228,12 @@ export const {
   closeArmyPopover,
   updateArmyName,
   confirmArmy,
+  changeArmyDirection,
+  switchBattleMoveMode,
   zoomInMap,
   zoomOutMap,
+  triggerMapEffect,
+  clearMapEffect,
 } = slice.actions;
 
 export default slice.reducer;

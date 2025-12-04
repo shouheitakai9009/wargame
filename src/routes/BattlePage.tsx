@@ -1,4 +1,9 @@
-import { Layout, LayoutHeader, LayoutBody, LayoutMain } from "../designs/Layout";
+import {
+  Layout,
+  LayoutHeader,
+  LayoutBody,
+  LayoutMain,
+} from "../designs/Layout";
 import { Header } from "../widgets/Header";
 import { Aside } from "../widgets/Aside";
 import { RightSidebar } from "../widgets/RightSidebar";
@@ -15,7 +20,7 @@ export default function BattlePage() {
         <Aside />
 
         <LayoutMain>
-          <div className="h-full bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden">
+          <div className="h-full bg-slate-800/50 border border-slate-700 overflow-hidden">
             <BattleMap />
           </div>
         </LayoutMain>

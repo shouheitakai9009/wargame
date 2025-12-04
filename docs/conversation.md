@@ -770,3 +770,822 @@ onMouseEnter={(e) => {
 - ✅ **variant別の発光**: 各variantの色に応じた影の色で統一感を演出
 - ✅ **滑らかなトランジション**: 200msで全てのプロパティがスムーズに変化
 - ✅ **既存の機能維持**: フォーカスリング、無効状態などはそのまま
+
+---
+
+### 14. コンテキストメニューの拡張 - 向きと移動モード
+
+#### 要求
+
+- 右クリックした場所が軍内であれば「向き」メニューを表示し、サブメニューで上下左右を選択できる
+- バトルフェーズのみ、軍内であれば「移動モード」メニューを表示
+
+#### 実装内容
+
+**1. battle.tsに定数を追加**
+
+```typescript
+// バトル中の移動モード
+export const BATTLE_MOVE_MODE = {
+  NONE: "NONE",
+  MOVE: "MOVE",
+} as const;
+
+export type BattleMoveMode =
+  (typeof BATTLE_MOVE_MODE)[keyof typeof BATTLE_MOVE_MODE];
+```
+
+**2. state.tsに状態を追加**
+
+```typescript
+export type AppState = {
+  // ...既存の状態
+  battleMoveMode: BattleMoveMode;
+};
+
+export const initialState: AppState = {
+  // ...既存の初期値
+  battleMoveMode: BATTLE_MOVE_MODE.NONE,
+};
+```
+
+**3. slice.tsにアクションを追加**
+
+```typescript
+// ユーザーが軍の向きを変更する
+changeArmyDirection: (
+  state,
+  action: PayloadAction<{ armyId: string; direction: ArmyDirection }>
+) => {
+  const army = state.armies.find((a) => a.id === action.payload.armyId);
+  if (army) {
+    army.direction = action.payload.direction;
+  }
+},
+
+// ユーザーが移動モードを切り替える
+switchBattleMoveMode: (state, action: PayloadAction<BattleMoveMode>) => {
+  state.battleMoveMode = action.payload;
+},
+```
+
+**4. Tile コンポーネントの更新**
+
+タイルが軍に属しているかを判定：
+
+```typescript
+// このタイルが属している軍を見つける
+const belongingArmy = armies.find((army) =>
+  army.positions.some((pos) => pos.x === x && pos.y === y)
+);
+```
+
+向き変更のハンドラー：
+
+```typescript
+const handleChangeDirection = (direction: ArmyDirection) => {
+  if (belongingArmy) {
+    dispatch(changeArmyDirection({ armyId: belongingArmy.id, direction }));
+  }
+};
+```
+
+コンテキストメニューにサブメニューを追加：
+
+```tsx
+{/* 軍に属している場合は「向き」サブメニューを表示 */}
+{belongingArmy && (
+  <>
+    <ContextMenuSeparator />
+    <ContextMenuSub>
+      <ContextMenuSubTrigger>向き</ContextMenuSubTrigger>
+      <ContextMenuSubContent>
+        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.UP)}>
+          上 {belongingArmy.direction === ARMY_DIRECTION.UP && " ✓"}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.DOWN)}>
+          下 {belongingArmy.direction === ARMY_DIRECTION.DOWN && " ✓"}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.LEFT)}>
+          左 {belongingArmy.direction === ARMY_DIRECTION.LEFT && " ✓"}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.RIGHT)}>
+          右 {belongingArmy.direction === ARMY_DIRECTION.RIGHT && " ✓"}
+        </ContextMenuItem>
+      </ContextMenuSubContent>
+    </ContextMenuSub>
+  </>
+)}
+
+{/* バトルフェーズかつ軍に属している場合は「移動モード」を表示 */}
+{phase === BATTLE_PHASE.BATTLE && belongingArmy && (
+  <ContextMenuItem onClick={() => handleContextMenu("移動モード")}>
+    移動モード
+  </ContextMenuItem>
+)}
+```
+
+#### 実装のポイント
+
+- ✅ **軍の判定**: タイルの座標が軍のpositionsに含まれているかで判定
+- ✅ **サブメニュー**: shadcn/ui の `ContextMenuSub`, `ContextMenuSubTrigger`, `ContextMenuSubContent` を使用
+- ✅ **チェックマーク**: 現在の向きに ✓ を表示
+- ✅ **条件付き表示**: 軍内のみ「向き」を表示、バトルフェーズのみ「移動モード」を表示
+- ✅ **Redux action命名**: `changeArmyDirection`（ユーザーの操作を直接表現）
+
+#### UX
+
+**向きの変更:**
+1. 軍内のマスを右クリック
+2. 「向き」メニューが表示される
+3. サブメニューで「上」「下」「左」「右」を選択
+4. 現在の向きには ✓ が表示される
+
+**移動モード:**
+1. バトルフェーズ中に軍内のマスを右クリック
+2. 「移動モード」メニューが表示される
+3. 選択すると移動モードに切り替わる
+
+---
+
+### 15. マップ背景のサイバーグリッド演出
+
+#### 要求
+
+- マップの背景にTroopCardのような光り輝くサイバーな演出を追加
+- マップと同じグリッド+ボーダー
+- 背景色は`bg-slate-900`のまま維持
+
+#### 実装内容
+
+**1. widgets/Map/index.tsx - グリッドと発光エフェクト**
+
+```tsx
+<div
+  className="w-full h-full overflow-hidden relative bg-slate-900"
+  style={{
+    backgroundImage: `
+      linear-gradient(to right, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
+    `,
+    backgroundSize: "50px 50px",
+    boxShadow: `
+      inset 0 0 60px rgba(59, 130, 246, 0.15),
+      inset 0 0 30px rgba(59, 130, 246, 0.1),
+      0 0 40px rgba(59, 130, 246, 0.2)
+    `,
+    border: "1px solid rgba(59, 130, 246, 0.3)",
+    animation: "cyber-grid-glow 3s ease-in-out infinite alternate",
+  }}
+>
+```
+
+**2. App.css - 脈動アニメーション**
+
+```css
+@keyframes cyber-grid-glow {
+  0% {
+    box-shadow: inset 0 0 60px rgba(59, 130, 246, 0.15),
+      inset 0 0 30px rgba(59, 130, 246, 0.1), 0 0 40px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 80px rgba(59, 130, 246, 0.25),
+      inset 0 0 50px rgba(59, 130, 246, 0.2), 0 0 60px rgba(59, 130, 246, 0.35);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    box-shadow: inset 0 0 60px rgba(59, 130, 246, 0.15),
+      inset 0 0 30px rgba(59, 130, 246, 0.1), 0 0 40px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+}
+```
+
+#### 視覚効果
+
+- ✅ **グリッドパターン**: 50px x 50px（タイルサイズと一致）
+- ✅ **青い発光ライン**: グリッドの線が青く発光
+- ✅ **内側の光**: `inset` シャドウで内側から青い光が広がる
+- ✅ **外側の光**: 周囲に青い発光エフェクト
+- ✅ **脈動アニメーション**: 3秒かけて光が強くなったり弱くなったりする
+- ✅ **背景色維持**: `bg-slate-900` のままでダークな雰囲気を保つ
+- ✅ **TroopCardとの統一感**: 同じ青色のサイバー演出
+
+#### デザインのポイント
+
+- TroopCardの発光エフェクトと同じ色（`rgba(59, 130, 246, ...)`）を使用
+- グリッドサイズをタイルサイズ（50px）に合わせることで、タイルとグリッドが一致
+- `alternate` で無限ループの脈動アニメーション
+- 内側と外側の両方から発光することで、立体感と深みを表現
+
+#### 追加改善: 発光オーバーレイを前面に配置
+
+**要求**
+
+- 発光をマップより前面に配置し、将来的に攻撃方向に応じた演出を実装しやすくする
+
+**実装内容**
+
+```tsx
+<div
+  className="w-full h-full overflow-hidden relative bg-slate-900"
+  style={{
+    /* グリッドの背景のみ保持 */
+    backgroundImage: `
+      linear-gradient(to right, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
+    `,
+    backgroundSize: "50px 50px",
+  }}
+>
+  {/* サイバーグロウオーバーレイ - マップの前面 */}
+  <div
+    className="absolute inset-0 z-50"
+    style={{
+      pointerEvents: "none", // クリックイベントを透過
+      boxShadow: `
+        inset 0 0 60px rgba(59, 130, 246, 0.15),
+        inset 0 0 30px rgba(59, 130, 246, 0.1),
+        0 0 40px rgba(59, 130, 246, 0.2)
+      `,
+      border: "1px solid rgba(59, 130, 246, 0.3)",
+      animation: "cyber-grid-glow 3s ease-in-out infinite alternate",
+    }}
+  />
+  {/* マップコンテンツ */}
+</div>
+```
+
+**メリット**
+
+- ✅ 発光がタイル・ユニットより前面に来る
+- ✅ 攻撃方向に応じた発光演出（例: 赤く早い脈動）が実装しやすい
+- ✅ `pointer-events: none` でマップ操作を妨げない
+- ✅ オーバーレイとして独立しているため、動的な色変更が容易
+
+---
+
+### 16. ArmyPopover のサイバーデザイン - TroopCard風の洗練されたスタイル
+
+#### 要求
+
+- 軍編成ポップオーバーをTroopCardのようなイケてるサイバーデザインに変更
+- 和風の古臭いデザインから、モダンでサイバーな青い発光デザインへ
+
+#### 実装内容
+
+**1. 全体のコンテナ - ダークグラデーションと青い発光**
+
+```tsx
+<PopoverContent
+  className="group w-96 relative overflow-hidden border-0 shadow-2xl"
+  style={{
+    background: "linear-gradient(135deg, rgb(30, 41, 59) 0%, rgb(15, 23, 42) 100%)",
+    boxShadow: `
+      0 0 60px 8px rgba(59, 130, 246, 0.4),
+      0 0 40px 4px rgba(59, 130, 246, 0.3),
+      0 12px 48px rgba(59, 130, 246, 0.5),
+      0 0 0 1px rgba(59, 130, 246, 0.6),
+      inset 0 0 20px rgba(59, 130, 246, 0.15)
+    `,
+  }}
+>
+```
+
+**2. 背景の発光エフェクト**
+
+```tsx
+{/* Animated background glow */}
+<div
+  className="absolute inset-0 opacity-50"
+  style={{
+    background: "radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.3), transparent 70%)",
+  }}
+/>
+
+{/* Shimmer effect */}
+<div className="absolute inset-0 pointer-events-none">
+  <div
+    className="absolute inset-0 -translate-x-full animate-shimmer"
+    style={{
+      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1), transparent)",
+      animation: "shimmer 3s ease-in-out infinite",
+    }}
+  />
+</div>
+```
+
+**3. ヘッダー - 青いグラデーション**
+
+```tsx
+<div className="relative -mt-2 -mx-4 px-4 py-3 bg-gradient-to-r from-blue-600/30 to-cyan-600/30 border-b border-blue-500/50 backdrop-blur-sm">
+  <h3 className="relative text-white font-bold text-lg text-center tracking-wider drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
+    軍 編 成
+  </h3>
+</div>
+```
+
+**4. 軍名入力 - ダークな入力フィールド**
+
+```tsx
+<Input
+  className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner"
+  style={{
+    boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.2)",
+  }}
+/>
+```
+
+**5. 士気 - 青い炎アイコン**
+
+```tsx
+<Flame
+  className="h-8 w-8 transition-all duration-300 text-blue-400 fill-blue-400 animate-pulse"
+  style={{
+    filter: "drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))",
+  }}
+/>
+```
+
+**6. 向き - 青い発光ボックス**
+
+```tsx
+<div
+  className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-500/20 border border-blue-400/50"
+  style={{
+    boxShadow: "0 0 15px rgba(59, 130, 246, 0.5), inset 0 0 10px rgba(59, 130, 246, 0.2)",
+  }}
+>
+  <div className="text-blue-400" style={{ filter: "drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))" }}>
+    {getDirectionIcon()}
+  </div>
+</div>
+```
+
+**7. 合計兵力 - 青い発光プログレスバー**
+
+```tsx
+<Progress
+  value={healthPercentage}
+  className="flex-1 h-6 bg-slate-700"
+  style={{
+    boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.3)",
+  }}
+/>
+<span
+  className="text-lg font-bold font-mono whitespace-nowrap text-white tabular-nums"
+  style={{
+    textShadow: "0 0 10px rgba(59, 130, 246, 0.8)",
+  }}
+>
+  {totalHealth.toLocaleString()} / {maxHealth.toLocaleString()}
+</span>
+```
+
+**8. フッター - 青い発光ライン**
+
+```tsx
+<div
+  className="relative -mb-2 -mx-4 h-1"
+  style={{
+    background: "linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent)",
+    boxShadow: "0 0 10px rgba(59, 130, 246, 0.5)",
+  }}
+/>
+```
+
+**9. App.css - shimmerアニメーション**
+
+```css
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+```
+
+#### デザインの特徴
+
+- ✅ **ダークグラデーション背景**: slate-700 → slate-900
+- ✅ **青い多層発光**: 外側・内側の両方から青く発光
+- ✅ **shimmerエフェクト**: 3秒周期で白い光が横断
+- ✅ **背景グロー**: 上部から青い光が広がる
+- ✅ **統一されたアクセントカラー**: 全て青（`rgba(59, 130, 246, ...)`）
+- ✅ **半透明の背景**: `bg-slate-800/50` でガラスモーフィズム風
+- ✅ **発光ボーダー**: `border-blue-500/30` で控えめな青い縁取り
+- ✅ **テキストシャドウ**: 全てのテキストに青い発光エフェクト
+
+#### TroopCardとの統一感
+
+- 同じ青色（`rgba(59, 130, 246, ...)`）を使用
+- 同じダークな背景グラデーション
+- 同じshimmerエフェクト
+- 同じ発光パターン（内側+外側）
+
+---
+
+### 17. きらりエフェクトの無限ループ化とポップオーバー位置の調整
+
+#### 要求
+
+- きらりエフェクトが途中で終わるのを直す → 無限ループにする
+- ポップオーバーが開く位置を調整 → 上側に開くように
+
+#### 実装内容
+
+**1. ArmyPopover - shimmerエフェクトの無限ループ化**
+
+```tsx
+{/* Shimmer effect - 無限ループ */}
+<div className="absolute inset-0 pointer-events-none overflow-hidden">
+  <div
+    className="absolute inset-0"
+    style={{
+      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1), transparent)",
+      animation: "shimmer 3s linear infinite",
+    }}
+  />
+</div>
+```
+
+**変更点:**
+- ✅ `ease-in-out` → `linear` に変更（等速で流れる）
+- ✅ `overflow-hidden` を追加（はみ出さないように）
+- ✅ `-translate-x-full` などのクラスを削除してCSSアニメーションに一元化
+
+**2. PopoverContent - 位置の調整**
+
+```tsx
+<PopoverContent
+  side="top"          // 上側に開く
+  align="center"      // 中央揃え
+  sideOffset={10}     // トリガーから10px離す
+  // ...
+>
+```
+
+**3. TroopCard - shimmerエフェクトの無限ループ化**
+
+```tsx
+{/* Shimmer effect - 無限ループ */}
+<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 overflow-hidden">
+  <div
+    className="absolute inset-0"
+    style={{
+      background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6), transparent)`,
+      filter: "blur(8px)",
+      animation: "shimmer 2s linear infinite",
+    }}
+  />
+</div>
+```
+
+**変更点:**
+- ✅ `animation: "shimmer 2s linear infinite"` を追加
+- ✅ `overflow-hidden` を追加
+- ✅ `transition-transform` などを削除してCSSアニメーションに統一
+
+#### 改善ポイント
+
+**きらりエフェクト:**
+- ✅ **無限ループ**: `infinite` で永遠に流れ続ける
+- ✅ **等速**: `linear` で一定速度で流れる
+- ✅ **途切れない**: `overflow-hidden` ではみ出しを防ぐ
+- ✅ **App.cssのkeyframes**: 既に定義済みの `@keyframes shimmer` を使用
+
+**ポップオーバー位置:**
+- ✅ **上側に開く**: `side="top"` でデフォルトを上側に
+- ✅ **中央揃え**: `align="center"` で中央配置
+- ✅ **適度な距離**: `sideOffset={10}` で10px離す
+- ✅ **自動調整**: 上側にスペースがない場合は自動的に下側に開く
+
+#### 視覚効果
+
+- ArmyPopoverは常にきらりと光が流れ続ける
+- TroopCardはホバー時にきらりと光が流れ続ける
+- ポップオーバーは選択範囲の上側に表示される
+
+---
+
+### 18. きらりエフェクトの輝度調整とポップオーバー位置の修正
+
+#### 要求
+
+- きらりエフェクトが光りすぎ → 控えめに調整
+- ポップオーバーの位置が治っていない → より確実に上側に表示
+
+#### 実装内容
+
+**1. ArmyPopover - shimmerエフェクトを控えめに**
+
+```tsx
+{/* Shimmer effect - 無限ループ（控えめ） */}
+<div className="absolute inset-0 pointer-events-none overflow-hidden">
+  <div
+    className="absolute inset-0"
+    style={{
+      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05), transparent)",
+      animation: "shimmer 4s linear infinite",
+    }}
+  />
+</div>
+```
+
+**変更点:**
+- ✅ 不透明度を下げる: `0.1, 0.2` → `0.05, 0.1`（半分に）
+- ✅ 速度を遅くする: `3s` → `4s`（よりゆっくり）
+
+**2. TroopCard - shimmerエフェクトを控えめに**
+
+```tsx
+{/* Shimmer effect - 無限ループ（控えめ） */}
+<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 overflow-hidden">
+  <div
+    className="absolute inset-0"
+    style={{
+      background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.3), transparent)`,
+      filter: "blur(8px)",
+      animation: "shimmer 3s linear infinite",
+    }}
+  />
+</div>
+```
+
+**変更点:**
+- ✅ 不透明度を下げる: `0.6, 0.9` → `0.3, 0.5`（約半分に）
+- ✅ 速度を遅くする: `2s` → `3s`（よりゆっくり）
+
+**3. PopoverContent - 位置の調整を強化**
+
+```tsx
+<PopoverContent
+  side="top"                // 上側に開く
+  align="center"            // 中央揃え
+  sideOffset={20}           // トリガーから20px離す（10→20に増加）
+  collisionPadding={20}     // 衝突検知の余白を20pxに設定
+>
+```
+
+**変更点:**
+- ✅ `sideOffset`: `10` → `20`（より上に）
+- ✅ `collisionPadding`: `20` を追加（画面端との衝突を避ける）
+
+#### 改善ポイント
+
+**きらりエフェクト:**
+- ✅ **控えめな輝度**: 不透明度を約半分に下げて眩しさを軽減
+- ✅ **ゆっくりした動き**: アニメーション速度を遅くして落ち着いた印象
+- ✅ **無限ループ維持**: `infinite` で永遠に流れ続ける
+
+**ポップオーバー位置:**
+- ✅ **より上に表示**: `sideOffset` を20pxに増やして選択範囲から離す
+- ✅ **衝突検知**: `collisionPadding` で画面端との衝突を避ける
+- ✅ **中央揃え**: `align="center"` で中央に配置
+
+#### 視覚効果
+
+- ArmyPopoverのきらりエフェクトがより上品で控えめに
+- TroopCardのホバー時のきらりエフェクトも控えめで洗練された印象
+- ポップオーバーが選択範囲の上側に確実に表示される
+
+---
+
+### 19. 汎用マップエフェクトシステムの実装
+
+#### 要求
+
+- 向き変更や攻撃受けなどのアクション時に、手軽にエフェクトを呼び出せる仕組み
+- フラグをONにすると指定されたエフェクトが自動的に発動
+- エフェクトの種類:
+  - 向き変更: じわっと滲み出る黒い発光（特定の方向）
+  - 攻撃を受ける: 早い脈動で赤く発光（特定の方向）
+
+#### 実装内容
+
+**1. states/battle.ts - エフェクト定数と型定義**
+
+```typescript
+// マップエフェクトの種類
+export const MAP_EFFECT = {
+  NONE: "NONE",
+  DIRECTION_CHANGE: "DIRECTION_CHANGE", // 向き変更
+  UNDER_ATTACK: "UNDER_ATTACK", // 攻撃を受ける
+} as const;
+
+export type MapEffect = {
+  type: MapEffectType;
+  direction?: "UP" | "DOWN" | "LEFT" | "RIGHT";
+  timestamp: number; // 自動クリア用
+};
+```
+
+**2. states/state.ts - Redux stateに追加**
+
+```typescript
+export type AppState = {
+  // ...既存の状態
+  mapEffect: MapEffect | null;
+};
+```
+
+**3. states/slice.ts - アクション定義**
+
+```typescript
+// ユーザーがマップエフェクトを発火する
+triggerMapEffect: (
+  state,
+  action: PayloadAction<{
+    type: MapEffectType;
+    direction?: "UP" | "DOWN" | "LEFT" | "RIGHT";
+  }>
+) => {
+  state.mapEffect = {
+    type: action.payload.type,
+    direction: action.payload.direction,
+    timestamp: Date.now(),
+  };
+},
+
+// マップエフェクトをクリアする
+clearMapEffect: (state) => {
+  state.mapEffect = null;
+},
+```
+
+**4. widgets/Map/MapEffectOverlay.tsx - エフェクトオーバーレイ**
+
+エフェクトタイプと方向に応じた発光を動的に生成:
+
+```typescript
+const getEffectStyle = (effect: MapEffect): React.CSSProperties => {
+  switch (effect.type) {
+    case MAP_EFFECT.DIRECTION_CHANGE:
+      return {
+        boxShadow: getDirectionalShadow(effect.direction, "0, 0, 0", "0.6"),
+        animation: "direction-change-glow 1.5s ease-out forwards",
+      };
+
+    case MAP_EFFECT.UNDER_ATTACK:
+      return {
+        boxShadow: getDirectionalShadow(effect.direction, "239, 68, 68", "0.8"),
+        animation: "under-attack-pulse 0.4s ease-in-out 4",
+      };
+  }
+};
+
+const getDirectionalShadow = (
+  direction: "UP" | "DOWN" | "LEFT" | "RIGHT" | undefined,
+  rgbColor: string,
+  opacity: string
+): string => {
+  switch (direction) {
+    case "UP":
+      return `inset 0 100px 80px -40px rgba(${rgbColor}, ${opacity})`;
+    case "DOWN":
+      return `inset 0 -100px 80px -40px rgba(${rgbColor}, ${opacity})`;
+    case "LEFT":
+      return `inset 100px 0 80px -40px rgba(${rgbColor}, ${opacity})`;
+    case "RIGHT":
+      return `inset -100px 0 80px -40px rgba(${rgbColor}, ${opacity})`;
+  }
+};
+```
+
+自動クリア機能:
+
+```typescript
+useEffect(() => {
+  if (!mapEffect) return;
+
+  const duration = getDuration(mapEffect.type);
+  const timer = setTimeout(() => {
+    dispatch(clearMapEffect());
+  }, duration);
+
+  return () => clearTimeout(timer);
+}, [mapEffect, dispatch]);
+```
+
+**5. App.css - アニメーション定義**
+
+```css
+/* 向き変更エフェクト: じわっと滲み出る黒い発光 */
+@keyframes direction-change-glow {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 攻撃を受けるエフェクト: 早い脈動で赤く発光 */
+@keyframes under-attack-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+```
+
+**6. widgets/Map/index.tsx - BattleMapに統合**
+
+```tsx
+{/* マップエフェクトオーバーレイ - 攻撃や向き変更のエフェクト */}
+<MapEffectOverlay />
+
+{/* サイバーグロウオーバーレイ - マップの前面 */}
+<div className="absolute inset-0 z-50" ... />
+```
+
+#### 使い方
+
+**向き変更時:**
+
+```typescript
+// 軍の向きを変更
+dispatch(changeArmyDirection({ armyId, direction: "UP" }));
+
+// エフェクトを発火
+dispatch(triggerMapEffect({
+  type: MAP_EFFECT.DIRECTION_CHANGE,
+  direction: "UP"
+}));
+
+// 1.5秒後に自動的にクリアされる
+```
+
+**攻撃を受けた時:**
+
+```typescript
+// 下方向から攻撃を受けた
+dispatch(triggerMapEffect({
+  type: MAP_EFFECT.UNDER_ATTACK,
+  direction: "DOWN"
+}));
+
+// 0.4秒 × 4回の脈動後、自動的にクリアされる
+```
+
+#### システムの特徴
+
+- ✅ **手軽な呼び出し**: `dispatch(triggerMapEffect(...))` だけで発動
+- ✅ **自動クリア**: エフェクトに応じた時間で自動的に消える
+- ✅ **方向指定**: 上下左右どの方向からのエフェクトかを指定可能
+- ✅ **拡張可能**: 新しいエフェクトタイプを追加しやすい設計
+- ✅ **パフォーマンス**: `pointer-events: none` でマップ操作を妨げない
+- ✅ **視覚的フィードバック**: ユーザーのアクションに対する明確な応答
+
+#### エフェクトの詳細
+
+**DIRECTION_CHANGE（向き変更）:**
+- 色: 黒（`rgba(0, 0, 0, 0.6)`）
+- アニメーション: じわっと滲み出る（1.5秒）
+- 使用例: 軍の向きを変更した時
+
+**UNDER_ATTACK（攻撃を受ける）:**
+- 色: 赤（`rgba(239, 68, 68, 0.8)` = red-500）
+- アニメーション: 早い脈動（0.4秒 × 4回 = 1.6秒）
+- 使用例: 敵から攻撃を受けた時
+
+#### 将来の拡張性
+
+新しいエフェクトタイプを追加する場合:
+1. `MAP_EFFECT` に定数を追加
+2. `getEffectStyle` に新しいcaseを追加
+3. App.cssにアニメーションを定義
+4. 必要に応じて `getDuration` を調整
+
+#### 実装例: 向き変更時にエフェクトを適用
+
+**widgets/Map/Tile/index.tsx - handleChangeDirection**
+
+```typescript
+const handleChangeDirection = (direction: typeof ARMY_DIRECTION[keyof typeof ARMY_DIRECTION]) => {
+  if (belongingArmy) {
+    dispatch(changeArmyDirection({ armyId: belongingArmy.id, direction }));
+
+    // 向き変更エフェクトを発火
+    dispatch(triggerMapEffect({
+      type: MAP_EFFECT.DIRECTION_CHANGE,
+      direction: direction as "UP" | "DOWN" | "LEFT" | "RIGHT",
+    }));
+  }
+};
+```
+
+**動作:**
+1. 軍内のマスを右クリック → 「向き」→ 方向を選択
+2. 軍の向きが変更される
+3. 指定した方向からじわっと黒い発光が滲み出る（1.5秒）
+4. 自動的にエフェクトがクリアされる

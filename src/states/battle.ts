@@ -39,3 +39,28 @@ export const ARMY_FORMATION_MODE = {
 
 export type ArmyFormationMode =
   (typeof ARMY_FORMATION_MODE)[keyof typeof ARMY_FORMATION_MODE];
+
+// バトル中の移動モード
+export const BATTLE_MOVE_MODE = {
+  NONE: "NONE", // モードなし
+  MOVE: "MOVE", // 移動モード
+} as const;
+
+export type BattleMoveMode =
+  (typeof BATTLE_MOVE_MODE)[keyof typeof BATTLE_MOVE_MODE];
+
+// マップエフェクトの種類
+export const MAP_EFFECT = {
+  NONE: "NONE", // エフェクトなし
+  DIRECTION_CHANGE: "DIRECTION_CHANGE", // 向き変更（じわっと滲み出る黒い発光）
+  UNDER_ATTACK: "UNDER_ATTACK", // 攻撃を受ける（早い脈動で赤く発光）
+} as const;
+
+export type MapEffectType = (typeof MAP_EFFECT)[keyof typeof MAP_EFFECT];
+
+// マップエフェクトの型定義
+export type MapEffect = {
+  type: MapEffectType;
+  direction?: "UP" | "DOWN" | "LEFT" | "RIGHT"; // どの方向からのエフェクトか
+  timestamp: number; // いつ発火したか（自動クリア用）
+};

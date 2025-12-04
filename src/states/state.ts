@@ -4,12 +4,15 @@ import {
   PREPARATION_TAB,
   RIGHT_SIDEBAR_TAB,
   ARMY_FORMATION_MODE,
+  BATTLE_MOVE_MODE,
 } from "./battle";
 import type {
   BattlePhase,
   PreparationTab,
   RightSidebarTab,
   ArmyFormationMode,
+  BattleMoveMode,
+  MapEffect,
 } from "./battle";
 import type { Army } from "./army";
 
@@ -36,6 +39,9 @@ export type AppState = {
   // 軍編成モード
   armyFormationMode: ArmyFormationMode;
 
+  // バトル中の移動モード
+  battleMoveMode: BattleMoveMode;
+
   // 矩形選択のドラッグ情報
   selectionDragStart: { x: number; y: number } | null;
   selectionDragCurrent: { x: number; y: number } | null;
@@ -52,6 +58,9 @@ export type AppState = {
     positions: Array<{ x: number; y: number }>;
   } | null;
 
+  // マップエフェクト
+  mapEffect: MapEffect | null;
+
   // 今後、他の状態もここに追加していく
   // 例: soldiers, armies, map など
 };
@@ -66,9 +75,11 @@ export const initialState: AppState = {
   isDraggingTroop: false,
   errorMessage: null,
   armyFormationMode: ARMY_FORMATION_MODE.NONE,
+  battleMoveMode: BATTLE_MOVE_MODE.NONE,
   selectionDragStart: null,
   selectionDragCurrent: null,
   armies: [],
   isArmyPopoverOpen: false,
   editingArmy: null,
+  mapEffect: null,
 };

@@ -121,13 +121,14 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
             }}
           />
 
-          {/* Shimmer effect */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+          {/* Shimmer effect - 無限ループ（控えめ） */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 overflow-hidden">
             <div
-              className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+              className="absolute inset-0"
               style={{
-                background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6), transparent)`,
+                background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.3), transparent)`,
                 filter: "blur(8px)",
+                animation: "shimmer 3s linear infinite",
               }}
             />
           </div>

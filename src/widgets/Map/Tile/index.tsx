@@ -7,8 +7,17 @@ import {
   switchArmyFormationMode,
   beginSelectionDrag,
   updateSelectionDrag,
+  changeArmyDirection,
+  switchBattleMoveMode,
+  triggerMapEffect,
 } from "@/states/slice";
-import { ARMY_FORMATION_MODE } from "@/states/battle";
+import {
+  ARMY_FORMATION_MODE,
+  BATTLE_PHASE,
+  BATTLE_MOVE_MODE,
+  MAP_EFFECT,
+} from "@/states/battle";
+import { ARMY_DIRECTION } from "@/states/army";
 import { TERRAIN_COLORS } from "../../../designs/colors";
 import { TERRAIN_TYPE, type Terrain } from "../../../states/terrain";
 import { TILE_SIZE } from "@/states/map";
@@ -27,6 +36,9 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
 } from "@/designs/ui/context-menu";
 
 type Props = {
@@ -54,10 +66,17 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
   const selectionDragStart = useAppSelector(
     (state) => state.app.selectionDragStart
   );
+  const armies = useAppSelector((state) => state.app.armies);
+  const phase = useAppSelector((state) => state.app.phase);
   const ref = useRef<HTMLDivElement>(null);
 
   const troopOnTile = placedTroops.find((t) => t.x === x && t.y === y);
   const isPlacementZone = isValidPlacementZone(x, y);
+
+  // このタイルが属している軍を見つける
+  const belongingArmy = armies.find((army) =>
+    army.positions.some((pos) => pos.x === x && pos.y === y)
+  );
 
   const { dropProps, isDropTarget } = useDrop({
     ref,
@@ -165,6 +184,20 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
       dispatch(switchArmyFormationMode(ARMY_FORMATION_MODE.SELECT));
     } else if (item === "軍分割モード") {
       dispatch(switchArmyFormationMode(ARMY_FORMATION_MODE.SPLIT));
+    } else if (item === "移動モード") {
+      dispatch(switchBattleMoveMode(BATTLE_MOVE_MODE.MOVE));
+    }
+  };
+
+  const handleChangeDirection = (direction: typeof ARMY_DIRECTION[keyof typeof ARMY_DIRECTION]) => {
+    if (belongingArmy) {
+      dispatch(changeArmyDirection({ armyId: belongingArmy.id, direction }));
+
+      // 向き変更エフェクトを発火
+      dispatch(triggerMapEffect({
+        type: MAP_EFFECT.DIRECTION_CHANGE,
+        direction: direction as "UP" | "DOWN" | "LEFT" | "RIGHT",
+      }));
     }
   };
 
@@ -231,6 +264,37 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
           軍分割モード
           {armyFormationMode === ARMY_FORMATION_MODE.SPLIT && " ✓"}
         </ContextMenuItem>
+
+        {/* 軍に属している場合は「向き」サブメニューを表示 */}
+        {belongingArmy && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>向き</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.UP)}>
+                  上 {belongingArmy.direction === ARMY_DIRECTION.UP && " ✓"}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.DOWN)}>
+                  下 {belongingArmy.direction === ARMY_DIRECTION.DOWN && " ✓"}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.LEFT)}>
+                  左 {belongingArmy.direction === ARMY_DIRECTION.LEFT && " ✓"}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleChangeDirection(ARMY_DIRECTION.RIGHT)}>
+                  右 {belongingArmy.direction === ARMY_DIRECTION.RIGHT && " ✓"}
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </>
+        )}
+
+        {/* バトルフェーズかつ軍に属している場合は「移動モード」を表示 */}
+        {phase === BATTLE_PHASE.BATTLE && belongingArmy && (
+          <ContextMenuItem onClick={() => handleContextMenu("移動モード")}>
+            移動モード
+          </ContextMenuItem>
+        )}
 
         {troopOnTile && (
           <>

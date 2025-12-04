@@ -15,6 +15,7 @@ import {
 import { validateArmySelection } from "@/lib/armyValidation";
 import { ArmyPopover } from "../ArmyPopover";
 import { ArmyOverlay } from "./ArmyOverlay";
+import { MapEffectOverlay } from "./MapEffectOverlay";
 
 export const BattleMap = () => {
   const dispatch = useAppDispatch();
@@ -149,8 +150,30 @@ export const BattleMap = () => {
       style={{
         cursor: isMapDragDisabled ? "default" : "move",
         userSelect: isMapDragDisabled ? "none" : "auto",
+        backgroundImage: `
+          linear-gradient(to right, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
+        `,
+        backgroundSize: "50px 50px",
       }}
     >
+      {/* マップエフェクトオーバーレイ - 攻撃や向き変更のエフェクト */}
+      <MapEffectOverlay />
+
+      {/* サイバーグロウオーバーレイ - マップの前面 */}
+      <div
+        className="absolute inset-0 z-50"
+        style={{
+          pointerEvents: "none",
+          boxShadow: `
+            inset 0 0 60px rgba(59, 130, 246, 0.15),
+            inset 0 0 30px rgba(59, 130, 246, 0.1),
+            0 0 40px rgba(59, 130, 246, 0.2)
+          `,
+          border: "1px solid rgba(59, 130, 246, 0.3)",
+          animation: "cyber-grid-glow 3s ease-in-out infinite alternate",
+        }}
+      />
       <div
         className="absolute"
         style={{
