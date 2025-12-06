@@ -5,6 +5,10 @@
 
 ## 以下を参照し必ず順守すること
 
+### 技術スタック
+
+- @.agent/rules/tech-stack.md
+
 ### ディレクトリ構成
 
 - @.agent/rules/directory-structure.md
