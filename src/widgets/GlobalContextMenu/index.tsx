@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/states";
 import {
   closeContextMenu,
@@ -156,9 +156,7 @@ export function GlobalContextMenu() {
     direction: (typeof ARMY_DIRECTION)[keyof typeof ARMY_DIRECTION]
   ) => {
     if (belongingArmy) {
-      dispatch(
-        changeArmyDirection({ armyId: belongingArmy.id, direction })
-      );
+      dispatch(changeArmyDirection({ armyId: belongingArmy.id, direction }));
 
       // 向き変更エフェクトを発火
       dispatch(
@@ -238,7 +236,7 @@ export function GlobalContextMenu() {
             {directionSubMenuOpen && (
               <div
                 className="absolute left-full top-0 z-[10000] min-w-[8rem] rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-md dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 animate-in fade-in-0 zoom-in-95 duration-200"
-                style={{ marginLeft: '-1px' }}
+                style={{ marginLeft: "-1px" }}
                 onMouseEnter={() => setDirectionSubMenuOpen(true)}
                 onMouseLeave={() => setDirectionSubMenuOpen(false)}
               >
@@ -278,7 +276,9 @@ export function GlobalContextMenu() {
             <div
               className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-50"
               onClick={() => {
-                dispatch(switchArmyFormationMode({ mode: ARMY_FORMATION_MODE.NONE }));
+                dispatch(
+                  switchArmyFormationMode({ mode: ARMY_FORMATION_MODE.NONE })
+                );
                 dispatch(closeContextMenu());
               }}
             >

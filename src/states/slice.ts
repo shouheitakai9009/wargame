@@ -20,11 +20,7 @@ import {
   type ArmyDirection,
 } from "./army";
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from "./map";
-import {
-  calculateArmySpeed,
-  calculateMovableTiles,
-  moveArmy,
-} from "@/lib/armyMovement";
+import { calculateArmySpeed, calculateMovableTiles } from "@/lib/armyMovement";
 
 export const slice = createSlice({
   name: "app",
@@ -426,7 +422,24 @@ export const slice = createSlice({
         offsetX = targetX - frontPosition;
       }
 
-      // 軍の全positionsをオフセット分移動
+      // 移動方向に応じて軍の向きを更新
+      let newDirection: ArmyDirection;
+      switch (moveDirection) {
+        case "up":
+          newDirection = ARMY_DIRECTION.UP;
+          break;
+        case "down":
+          newDirection = ARMY_DIRECTION.DOWN;
+          break;
+        case "left":
+          newDirection = ARMY_DIRECTION.LEFT;
+          break;
+        case "right":
+          newDirection = ARMY_DIRECTION.RIGHT;
+          break;
+      }
+
+      // 軍の全positionsをオフセット分移動し、向きも更新
       const newPositions = army.positions.map((pos) => ({
         x: pos.x + offsetX,
         y: pos.y + offsetY,
@@ -436,6 +449,7 @@ export const slice = createSlice({
       state.armies[armyIndex] = {
         ...army,
         positions: newPositions,
+        direction: newDirection,
       };
 
       // placedTroopsも更新（兵の座標を軍の移動に合わせる）
@@ -453,6 +467,13 @@ export const slice = createSlice({
         }
         return troop;
       });
+
+      // マップエフェクトを発火（向き変更と同じエフェクト）
+      state.mapEffect = {
+        type: MAP_EFFECT.DIRECTION_CHANGE,
+        direction: newDirection,
+        timestamp: Date.now(),
+      };
 
       // 移動モードをリセット
       state.battleMoveMode = BATTLE_MOVE_MODE.NONE;
