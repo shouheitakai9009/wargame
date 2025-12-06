@@ -107,7 +107,7 @@ function canMoveToPosition(
 /**
  * 軍の移動可能なマスを計算する
  * バトルルール：向きに関係なく上下左右に移動できる
- * - 軍の中心から上下左右それぞれの方向に速度分まで移動可能
+ * - 各方向の最遠点（代表点）のみを返す
  */
 export function calculateMovableTiles(
   army: Army,
@@ -126,17 +126,28 @@ export function calculateMovableTiles(
     return movableTiles;
   }
 
-  // 軍の現在の位置をSetに変換（除外用）
-  const currentPositionsSet = new Set(
-    army.positions.map((pos) => `${pos.x},${pos.y}`)
+  // 4方向（上下左右）それぞれの前線を計算
+  const frontlines = {
+    up: Math.min(...troopsInArmy.map((t) => t.y)),
+    down: Math.max(...troopsInArmy.map((t) => t.y)),
+    left: Math.min(...troopsInArmy.map((t) => t.x)),
+    right: Math.max(...troopsInArmy.map((t) => t.x)),
+  };
+
+  // 軍の中心座標を計算（代表点として使用）
+  const centerX = Math.round(
+    troopsInArmy.reduce((sum, t) => sum + t.x, 0) / troopsInArmy.length
+  );
+  const centerY = Math.round(
+    troopsInArmy.reduce((sum, t) => sum + t.y, 0) / troopsInArmy.length
   );
 
   // 4方向（上下左右）それぞれに対して移動可能マスを計算
   const directions = [
-    { dx: 0, dy: -1 }, // 上
-    { dx: 0, dy: 1 }, // 下
-    { dx: -1, dy: 0 }, // 左
-    { dx: 1, dy: 0 }, // 右
+    { name: "up", dx: 0, dy: -1, frontX: centerX, frontY: frontlines.up },
+    { name: "down", dx: 0, dy: 1, frontX: centerX, frontY: frontlines.down },
+    { name: "left", dx: -1, dy: 0, frontX: frontlines.left, frontY: centerY },
+    { name: "right", dx: 1, dy: 0, frontX: frontlines.right, frontY: centerY },
   ];
 
   for (const direction of directions) {
@@ -196,11 +207,13 @@ export function calculateMovableTiles(
         break; // この方向のこれ以上の移動は不可
       }
 
-      // 軍の全positionsを移動可能マスとして追加（現在の位置は除外）
-      const validPositions = newPositions.filter(
-        (pos) => !currentPositionsSet.has(`${pos.x},${pos.y}`)
-      );
-      movableTiles.push(...validPositions);
+      // この方向・距離の代表点を1つだけ追加（前線から移動した位置）
+      const representativeTile = {
+        x: direction.frontX + offsetX,
+        y: direction.frontY + offsetY,
+      };
+
+      movableTiles.push(representativeTile);
     }
   }
 

@@ -373,53 +373,38 @@ export const slice = createSlice({
 
       if (troopsInArmy.length === 0) return;
 
-      // 軍の中心座標を計算
-      const currentCenterX = Math.round(
-        troopsInArmy.reduce((sum, t) => sum + t.x, 0) / troopsInArmy.length
-      );
-      const currentCenterY = Math.round(
-        troopsInArmy.reduce((sum, t) => sum + t.y, 0) / troopsInArmy.length
-      );
+      // 軍の4方向の前線を計算
+      const frontlines = {
+        up: Math.min(...troopsInArmy.map((t) => t.y)),
+        down: Math.max(...troopsInArmy.map((t) => t.y)),
+        left: Math.min(...troopsInArmy.map((t) => t.x)),
+        right: Math.max(...troopsInArmy.map((t) => t.x)),
+      };
 
-      // クリックしたマスが軍の中心からどの方向にあるかを判定
-      // 上下左右のいずれか1方向のみに移動する
+      // クリックした位置から移動方向と距離を判定
+      let moveDirection: "up" | "down" | "left" | "right";
       let offsetX = 0;
       let offsetY = 0;
 
-      // 1. まず上下左右のどの方向かを判定
-      const diffX = targetX - currentCenterX;
-      const diffY = targetY - currentCenterY;
-
-      // 2. 移動方向を決定（差分の絶対値が大きい方向）
-      let moveDirection: "up" | "down" | "left" | "right";
-
-      if (Math.abs(diffX) > Math.abs(diffY)) {
-        // 横方向
-        moveDirection = diffX > 0 ? "right" : "left";
+      if (targetY < frontlines.up) {
+        // 上方向
+        moveDirection = "up";
+        offsetY = targetY - frontlines.up;
+      } else if (targetY > frontlines.down) {
+        // 下方向
+        moveDirection = "down";
+        offsetY = targetY - frontlines.down;
+      } else if (targetX < frontlines.left) {
+        // 左方向
+        moveDirection = "left";
+        offsetX = targetX - frontlines.left;
+      } else if (targetX > frontlines.right) {
+        // 右方向
+        moveDirection = "right";
+        offsetX = targetX - frontlines.right;
       } else {
-        // 縦方向
-        moveDirection = diffY > 0 ? "down" : "up";
-      }
-
-      // 3. 移動方向の軍の端（最前線）を見つける
-      let frontPosition: number;
-
-      if (moveDirection === "up") {
-        // 上方向：最小のy座標
-        frontPosition = Math.min(...troopsInArmy.map((t) => t.y));
-        offsetY = targetY - frontPosition;
-      } else if (moveDirection === "down") {
-        // 下方向：最大のy座標
-        frontPosition = Math.max(...troopsInArmy.map((t) => t.y));
-        offsetY = targetY - frontPosition;
-      } else if (moveDirection === "left") {
-        // 左方向：最小のx座標
-        frontPosition = Math.min(...troopsInArmy.map((t) => t.x));
-        offsetX = targetX - frontPosition;
-      } else if (moveDirection === "right") {
-        // 右方向：最大のx座標
-        frontPosition = Math.max(...troopsInArmy.map((t) => t.x));
-        offsetX = targetX - frontPosition;
+        // 軍の範囲内をクリックした場合は移動しない
+        return;
       }
 
       // 移動方向に応じて軍の向きを更新
