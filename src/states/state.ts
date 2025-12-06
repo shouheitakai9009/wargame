@@ -15,6 +15,7 @@ import type {
   MapEffect,
 } from "./battle";
 import type { Army, ArmyColorKey } from "./army";
+import { initialArmies, initialPlacedTroops } from "../data/initialPlacement";
 
 /**
  * アプリケーション全体の状態
@@ -42,6 +43,12 @@ export type AppState = {
   // バトル中の移動モード
   battleMoveMode: BattleMoveMode;
 
+  // 移動モード用：移動対象の軍ID
+  movingArmyId: string | null;
+
+  // 移動モード用：移動可能なマス座標のリスト
+  movableTiles: Array<{ x: number; y: number }> | null;
+
   // 分割モード用：分割対象の軍ID
   splittingArmyId: string | null;
 
@@ -66,6 +73,18 @@ export type AppState = {
   // マップエフェクト
   mapEffect: MapEffect | null;
 
+  // 右サイドバーの開閉状態
+  isRightSidebarOpen: boolean;
+
+  // 左サイドバーの開閉状態
+  isLeftSidebarOpen: boolean;
+
+  // バトルアナウンス（バトル開始、ターン開始など）
+  battleAnnouncement: {
+    text: string;
+    subText?: string;
+  } | null;
+
   // 今後、他の状態もここに追加していく
   // 例: soldiers, armies, map など
 };
@@ -76,16 +95,21 @@ export const initialState: AppState = {
   mapZoomRatio: 1,
   preparationTab: PREPARATION_TAB.DEPLOY_SOLDIER,
   rightSidebarTab: RIGHT_SIDEBAR_TAB.BATTLE_LOG,
-  placedTroops: [],
+  placedTroops: initialPlacedTroops,
   isDraggingTroop: false,
   errorMessage: null,
   armyFormationMode: ARMY_FORMATION_MODE.NONE,
   battleMoveMode: BATTLE_MOVE_MODE.NONE,
+  movingArmyId: null,
+  movableTiles: null,
   splittingArmyId: null,
   selectionDragStart: null,
   selectionDragCurrent: null,
-  armies: [],
+  armies: initialArmies,
   isArmyPopoverOpen: false,
   editingArmy: null,
   mapEffect: null,
+  isRightSidebarOpen: true,
+  isLeftSidebarOpen: true,
+  battleAnnouncement: null,
 };

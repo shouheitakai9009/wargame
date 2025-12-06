@@ -18,7 +18,7 @@ type LayoutHeaderProps = {
 
 export function LayoutHeader({ children }: LayoutHeaderProps) {
   return (
-    <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+    <header className="absolute top-0 left-0 right-0 z-50 py-4">
       {children}
     </header>
   );
@@ -29,7 +29,7 @@ type LayoutBodyProps = {
 };
 
 export function LayoutBody({ children }: LayoutBodyProps) {
-  return <div className="flex h-[calc(100vh-73px)]">{children}</div>;
+  return <div className="flex h-screen">{children}</div>;
 }
 
 type LayoutMainProps = {

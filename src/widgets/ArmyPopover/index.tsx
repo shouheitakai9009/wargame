@@ -138,7 +138,7 @@ export function ArmyPopover() {
               <div className="relative pt-6 pb-2 px-4">
                 <div className="flex items-center justify-center gap-4">
                   {/* 左装飾 */}
-                  <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-blue-500/50 to-blue-500" />
+                  <div className="h-px flex-1 bg-linear-to-r from-transparent via-blue-500/50 to-blue-500" />
 
                   {/* タイトル */}
                   <h3 className="text-white font-bold text-xl tracking-widest drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]">
@@ -146,11 +146,11 @@ export function ArmyPopover() {
                   </h3>
 
                   {/* 右装飾 */}
-                  <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-blue-500/50 to-blue-500" />
+                  <div className="h-px flex-1 bg-linear-to-l from-transparent via-blue-500/50 to-blue-500" />
                 </div>
 
                 {/* 下部のアクセント光 */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-blue-400/50 to-transparent shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-linear-to-r from-transparent via-blue-400/50 to-transparent shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
               </div>
 
               {/* コンテンツ部分にパディングを追加 */}
@@ -297,7 +297,7 @@ export function ArmyPopover() {
                         }}
                       >
                         {/* 光の反射（シマー） */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                        <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent" />
                       </div>
                     </div>
                   </div>

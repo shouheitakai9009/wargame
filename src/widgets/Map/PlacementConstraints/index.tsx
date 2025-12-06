@@ -1,10 +1,17 @@
 import { FloatingInfo } from "@/designs/FloatingInfo";
 import { CardContent } from "@/designs/ui/card";
 import { useAppSelector } from "@/states";
+import { BATTLE_PHASE } from "@/states/battle";
 
 export function PlacementConstraints() {
   const placedTroops = useAppSelector((state) => state.app.placedTroops);
   const armies = useAppSelector((state) => state.app.armies);
+  const phase = useAppSelector((state) => state.app.phase);
+
+  // 準備フェーズ以外では表示しない
+  if (phase !== BATTLE_PHASE.PREPARATION) {
+    return null;
+  }
 
   // Count troops by type
   const totalCount = placedTroops.length;

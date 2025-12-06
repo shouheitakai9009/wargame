@@ -2105,3 +2105,1312 @@ case TERRAIN_TYPE.FOREST:
 - 色分けで増減が直感的に理解できる
 
 ---
+### 43. 兵のマス上の右クリックメニュー不具合修正
+
+#### 問題
+
+- 兵のマス上で右クリックしてもカスタムコンテキストメニューが出現せず、ブラウザデフォルトのメニューが出てしまう。
+
+#### 原因
+
+`src/widgets/Map/Tile/index.tsx` において、`ContextMenuTrigger` が `TooltipProvider` をラップしていたことが原因。`TooltipProvider` は DOM ノードをレンダリングしないため、`onContextMenu` イベントリスナーが実際の DOM 要素にアタッチされていなかった。
+
+#### 修正内容
+
+**コンポーネントのネスト構造を変更**
+
+修正前（簡略化）：
+
+```tsx
+<ContextMenu>
+  <ContextMenuTrigger>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>{tileContent}</TooltipTrigger>
+      </Tooltip>
+    </TooltipProvider>
+  </ContextMenuTrigger>
+</ContextMenu>
+```
+
+修正後（簡略化）：
+
+```tsx
+<TooltipProvider>
+  <Tooltip>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <TooltipTrigger asChild>{tileContent}</TooltipTrigger>
+      </ContextMenuTrigger>
+    </ContextMenu>
+    <TooltipContent />
+  </Tooltip>
+</TooltipProvider>
+```
+
+#### 改善ポイント
+
+- ✅ `ContextMenuTrigger` が `TooltipTrigger` を介して実際の DOM 要素（`tileContent`）をラップするように変更
+- ✅ 右クリック時に正しくカスタムコンテキストメニューが表示されるようになった
+- ✅ ツールチップの機能も維持されている
+
+#### UX
+
+- 兵がいるマスを右クリックすると、期待通りにアプリケーションのコンテキストメニューが表示される
+- ブラウザのデフォルトメニューが表示されなくなり、没入感が向上
+### 44. 右サイドバーの開閉トグル実装
+
+#### 要求
+
+- 右側メニュー（サイドバー）を開閉できるようにトグルアイコンを取り付けてほしい。
+
+#### 実装内容
+
+**1. 状態管理の追加**
+
+`src/states/state.ts` に `isRightSidebarOpen` を追加し、`src/states/slice.ts` に `toggleRightSidebar` アクションを追加しました。
+
+**2. RightSidebar コンポーネントの改修**
+
+`src/widgets/RightSidebar/index.tsx` を修正し、トグルボタンとアニメーションを実装しました。
+
+```tsx
+// 構造の概要
+<div className="relative flex">
+  {/* トグルボタン */}
+  <button
+    onClick={() => dispatch(toggleRightSidebar())}
+    className="absolute left-0 top-1/2 -translate-x-full ..."
+  >
+    {isRightSidebarOpen ? <ChevronRight /> : <ChevronLeft />}
+  </button>
+
+  {/* サイドバー本体 */}
+  <aside
+    className={`... transition-all duration-300 ease-in-out ${
+      isRightSidebarOpen ? "w-80 opacity-100" : "w-0 opacity-0 border-l-0"
+    }`}
+  >
+    {/* コンテンツ */}
+  </aside>
+</div>
+```
+
+#### 改善ポイント
+
+- ✅ **トグルボタン**: サイドバーの左側に常時表示されるボタンで、直感的に開閉が可能。
+- ✅ **アニメーション**: `transition-all duration-300` により、スムーズに開閉する。
+- ✅ **レイアウト**: サイドバーが閉じると幅が `0` になり、メインコンテンツ（マップ）が自動的に広がる。
+- ✅ **視認性**: 閉じている間は `opacity-0` と `border-l-0` を適用し、完全に隠れるように調整。
+
+#### UX
+
+- ユーザーはマップを広く使いたい時にサイドバーを閉じることができる。
+- 必要な時にすぐにサイドバーを再表示できる。
+- アイコンの変化（`<` ⇔ `>`）で現在の状態と次のアクションが明確。
+### 45. 初期配置データの実装
+
+#### 要求
+
+- 提供されたスクリーンショットに基づいて、初期の軍配置データを作成し、初期状態として設定してほしい。
+
+#### 実装内容
+
+**1. `src/data/initialPlacement.ts` の作成**
+
+スクリーンショットを解析し、以下の 4 つの軍を定義しました。
+
+- **秦国左翼**: 青色、騎兵部隊（x=8,9）
+- **秦国特攻軍**: 緑色、歩兵・弓兵混成部隊（x=15、川の上）
+- **秦国中央軍**: オレンジ色、盾兵・将軍による防衛陣形（x=20-22）
+- **秦国右翼**: 紫色、騎兵・歩兵・弓兵のバランス型（x=26,27）
+
+**2. 初期状態への適用**
+
+`src/states/state.ts` を修正し、`initialState` の `armies` と `placedTroops` に上記のデータを適用しました。
+
+#### 改善ポイント
+
+- ✅ アプリケーション起動時に、スクリーンショット通りの配置が再現されるようになった。
+- ✅ 各軍の構成（兵種、色、位置）が正確に反映されている。
+- ✅ データファイルとして分離されているため、今後の調整やシナリオ追加が容易。
+### 46. 初期配置位置の調整
+
+#### 要求
+
+- 初期配置の位置が上すぎるため、最上部がマップの下部 1/3（y=20）から始まるように調整してほしい。
+
+#### 実装内容
+
+**座標のオフセット調整**
+
+`src/data/initialPlacement.ts` の全ての Y 座標に `+10` を加算し、配置全体を下に移動させました。
+
+- **左翼**: y=10-13 → y=20-23
+- **特攻軍**: y=10-14 → y=20-24
+- **中央軍**: y=15-17 → y=25-27
+- **右翼**: y=10-13 → y=20-23
+
+#### 改善ポイント
+
+- ✅ 全ての軍がマップの下部 1/3 のエリア（y >= 20）に収まるようになった。
+- ✅ ユーザーの意図通り、手前側に軍が配置され、敵軍との距離が適切になった。
+
+---
+
+### 47. ヘッダーにリキッドグラスデザインを適用
+
+#### 要求
+
+- ヘッダーの背景をリキッドグラス風のデザインにしてほしい
+
+#### 実装内容
+
+**リキッドグラス効果の実装 (`src/widgets/Header/index.tsx`)**
+
+```tsx
+<div
+  className="relative flex items-center justify-between p-4 rounded-xl overflow-hidden border border-white/10"
+  style={{
+    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 51, 234, 0.08) 50%, rgba(236, 72, 153, 0.08) 100%)",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)",
+  }}
+>
+  {/* 装飾レイヤー */}
+  <div
+    className="absolute inset-0 -z-10 pointer-events-none"
+    style={{
+      background: "radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%)",
+      filter: "blur(40px)",
+    }}
+  />
+
+  {/* 上部のハイライト */}
+  <div
+    className="absolute top-0 left-0 right-0 h-px"
+    style={{
+      background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)",
+    }}
+  />
+
+  {/* コンテンツ */}
+</div>
+```
+
+#### 改善ポイント
+
+- ✅ **グラデーション背景**: 青→紫→ピンクの135度グラデーション（薄い透明度）
+- ✅ **グラスモーフィズム**: `backdropFilter: blur(12px)` でガラスのようなブラー効果
+- ✅ **流動的な装飾**: 2つの放射状グラデーション（青とピンク）を40pxのblurで配置
+- ✅ **立体感**:
+  - 薄い白のボーダー (`border-white/10`)
+  - 柔らかい外側の影
+  - 内側のハイライトで光沢感
+- ✅ **上部ハイライト**: 水平グラデーションで磨かれたガラスのような質感
+- ✅ shadcn/uiのカラーパレット（blue-500、purple-500、pink-500）を使用
+
+#### UX
+
+- ヘッダーが透明感のある未来的なデザインになった
+- 液体のような柔らかいグラデーションが流れるように見える
+- ガラスのような質感で洗練された印象
+- 背景がぼやけることで、コンテンツが際立つ
+
+---
+
+### 48. ヘッダーをマップ上にフローティング表示
+
+#### 要求
+
+- ヘッダーのラッパーの背景を削除して、マップがガラス越しに見えるようにしたい
+
+#### 実装内容
+
+**1. LayoutHeaderを透明化して絶対配置に変更**
+
+```tsx
+// src/designs/Layout/index.tsx
+
+// 修正前
+export function LayoutHeader({ children }: LayoutHeaderProps) {
+  return (
+    <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+      {children}
+    </header>
+  );
+}
+
+// 修正後
+export function LayoutHeader({ children }: LayoutHeaderProps) {
+  return (
+    <header className="absolute top-0 left-0 right-0 z-50 px-6 py-4">
+      {children}
+    </header>
+  );
+}
+```
+
+**2. LayoutBodyの高さ調整**
+
+```tsx
+// src/designs/Layout/index.tsx
+
+// 修正前
+export function LayoutBody({ children }: LayoutBodyProps) {
+  return <div className="flex h-[calc(100vh-73px)]">{children}</div>;
+}
+
+// 修正後
+export function LayoutBody({ children }: LayoutBodyProps) {
+  return <div className="flex h-screen">{children}</div>;
+}
+```
+
+#### 改善ポイント
+
+- ✅ **背景の削除**: `bg-slate-800`と`border-b`を削除して完全に透明に
+- ✅ **絶対配置**: `absolute top-0 left-0 right-0 z-50`でマップの上にフローティング
+- ✅ **高さ調整**: LayoutBodyを`h-screen`に変更してマップが画面全体に表示
+- ✅ **ガラス反射**: ヘッダーのbackdrop-blurによって、背後のマップがガラス越しに見える
+
+#### UX
+
+- ヘッダーが背景のマップの上にフローティング表示される
+- ガラスモーフィズム効果によって、マップがぼやけて透けて見える
+- より没入感のある、洗練されたUI
+- マップが画面全体に広がり、ヘッダーはその上に浮かぶ形
+
+---
+
+### 49. ヘッダーを左右サイドバーの間に動的フィット
+
+#### 要求
+
+- ヘッダーのサイズを左と右メニューの間に来るように調整したい
+
+#### 実装内容
+
+**1. ヘッダーに動的なマージンを追加**
+
+```tsx
+// src/widgets/Header/index.tsx
+
+export function Header() {
+  const dispatch = useAppDispatch();
+  const { phase, isRightSidebarOpen } = useAppSelector((state) => state.app);
+
+  // 左サイドバーは準備フェーズのみ表示（w-64 = 256px = 16rem）
+  const leftOffset = phase === BATTLE_PHASE.PREPARATION ? "16rem" : "0";
+  // 右サイドバーは開いている時のみ表示（w-80 = 320px = 20rem）
+  const rightOffset = isRightSidebarOpen ? "20rem" : "0";
+
+  return (
+    <div
+      className="relative flex items-center justify-between p-4 rounded-xl overflow-hidden border border-white/10 mx-4"
+      style={{
+        marginLeft: leftOffset,
+        marginRight: rightOffset,
+        transition: "margin 300ms ease-in-out",
+        // ...
+      }}
+    >
+```
+
+**2. LayoutHeaderのパディング調整**
+
+```tsx
+// src/designs/Layout/index.tsx
+
+// 修正前
+<header className="absolute top-0 left-0 right-0 z-50 px-6 py-4">
+
+// 修正後
+<header className="absolute top-0 left-0 right-0 z-50 py-4">
+```
+
+#### 改善ポイント
+
+- ✅ **動的な左マージン**: 準備フェーズの時は16rem（左サイドバー分）、それ以外は0
+- ✅ **動的な右マージン**: 右サイドバーが開いている時は20rem、閉じている時は0
+- ✅ **スムーズなトランジション**: `transition: margin 300ms ease-in-out`でサイドバーの開閉に追従
+- ✅ **4つの状態に対応**:
+  - 準備フェーズ + 右サイドバー開: 左256px、右320px
+  - 準備フェーズ + 右サイドバー閉: 左256px、右0px
+  - バトルフェーズ + 右サイドバー開: 左0px、右320px
+  - バトルフェーズ + 右サイドバー閉: 左0px、右0px
+
+#### UX
+
+- ヘッダーが常に左右のサイドバーの間（メインコンテンツ部分）にフィット
+- サイドバーの開閉やフェーズ変更に応じて、ヘッダーがスムーズにリサイズ
+- マップの可視領域とヘッダーの幅が一致し、視覚的に整った印象
+- レイアウトの一貫性が向上
+
+---
+
+### 50. ヘッダーに外側の余白を追加
+
+#### 要求
+
+- ヘッダーの外側に左右の余白を追加してほしい
+
+#### 実装内容
+
+**マージン計算に基本余白を追加**
+
+```tsx
+// src/widgets/Header/index.tsx
+
+// 修正前
+const leftOffset = phase === BATTLE_PHASE.PREPARATION ? "16rem" : "0";
+const rightOffset = isRightSidebarOpen ? "20rem" : "0";
+
+// 修正後
+const baseMargin = "1.5rem";
+const leftOffset = phase === BATTLE_PHASE.PREPARATION ? `calc(16rem + ${baseMargin})` : baseMargin;
+const rightOffset = isRightSidebarOpen ? `calc(20rem + ${baseMargin})` : baseMargin;
+```
+
+#### 改善ポイント
+
+- ✅ **基本余白の定数化**: `baseMargin = "1.5rem"`（24px）を定義
+- ✅ **calcによる計算**: サイドバーの幅に基本余白を加算
+- ✅ **すべての状態で余白を確保**:
+  - サイドバーがない時も`baseMargin`で余白を確保
+  - サイドバーがある時は`サイドバー幅 + baseMargin`
+- ✅ Tailwindの`mx-4`クラスを削除（styleで完全制御）
+
+#### UX
+
+- ヘッダーの左右に適度な余白が追加され、画面端に詰まらない
+- サイドバーとヘッダーの間にも余白があり、視覚的に分離される
+- より洗練された、余裕のあるレイアウト
+
+---
+
+### 51. 移動モードのハイライト計算ロジック修正
+
+#### 要求
+
+- 移動モード時のハイライトがおかしい
+- 軍の向きにいる先頭の兵達の1マス奥が移動可能マスの開始点
+- そこから軍の向きの方向へ軍の速度までが移動可能マスの終点としてほしい
+
+#### 問題
+
+現在の実装では軍の中心座標から移動可能マスを計算していた。軍の向きや先頭の兵の位置を考慮していなかった。
+
+#### 実装内容
+
+**1. 先頭の兵を特定**
+
+```typescript
+// lib/armyMovement.ts
+
+// 軍の向きにいる最前線の兵を見つける
+let frontmostPosition: number;
+
+if (directionY !== 0) {
+  // 上下方向の場合、y座標で判定
+  if (directionY === -1) {
+    // 上向き：最小のy座標が先頭
+    frontmostPosition = Math.min(...troopsInArmy.map((t) => t.y));
+  } else {
+    // 下向き：最大のy座標が先頭
+    frontmostPosition = Math.max(...troopsInArmy.map((t) => t.y));
+  }
+} else {
+  // 左右方向の場合、x座標で判定
+  if (directionX === -1) {
+    // 左向き：最小のx座標が先頭
+    frontmostPosition = Math.min(...troopsInArmy.map((t) => t.x));
+  } else {
+    // 右向き：最大のx座標が先頭
+    frontmostPosition = Math.max(...troopsInArmy.map((t) => t.x));
+  }
+}
+```
+
+**2. 移動可能マスの計算**
+
+```typescript
+// 移動可能距離分だけマスを計算
+// 先頭の1マス奥から開始し、armySpeed分のマスをハイライト
+for (let distance = 1; distance <= armySpeed; distance++) {
+  // 先頭位置から距離分進んだ座標を計算
+  let targetX: number;
+  let targetY: number;
+
+  if (directionY !== 0) {
+    // 上下方向
+    targetY = frontmostPosition + directionY * distance;
+    // 軍の中心x座標を使用
+    targetX = currentCenterX;
+  } else {
+    // 左右方向
+    targetX = frontmostPosition + directionX * distance;
+    // 軍の中心y座標を使用
+    targetY = currentCenterY;
+  }
+
+  // 移動後の軍の全positionsを計算
+  const offsetX = targetX - currentCenterX;
+  const offsetY = targetY - currentCenterY;
+
+  const newPositions = army.positions.map((pos) => ({
+    x: pos.x + offsetX,
+    y: pos.y + offsetY,
+  }));
+
+  // 境界チェックと衝突チェック
+  // ...
+
+  movableTiles.push({ x: targetX, y: targetY });
+}
+```
+
+#### 改善ポイント
+
+- ✅ 軍の向きに応じて、最前線にいる兵の座標を計算
+  - 上向き：最小のy座標
+  - 下向き：最大のy座標
+  - 左向き：最小のx座標
+  - 右向き：最大のx座標
+- ✅ 先頭の兵の1マス奥から移動可能マスを計算開始（distance = 1）
+- ✅ そこから軍の速度分のマスをハイライト（distance = armySpeed）
+- ✅ 例：armySpeed = 3なら、先頭の1、2、3マス奥の3マスがハイライトされる
+- ✅ 各移動可能マスで軍全体が移動できるかをチェック（境界チェック、衝突チェック）
+
+#### UX
+
+**修正前**:
+- 軍の中心から移動可能マスが計算される
+- 軍の向きや先頭の位置が考慮されていない
+
+**修正後**:
+- 軍の向きにいる先頭の兵の1マス奥から移動可能マスがハイライトされる
+- そこから軍の速度分のマスが正確に表示される
+- 視覚的に「軍が前進する」というイメージが明確になる
+
+---
+### 47. 兵種ステータスのバトルルール準拠修正
+
+#### 要求
+
+- `battle-rule.md` に記載されているルールでは速度の最大値が 3 だが、コード内では 4 以上の兵種が存在するため修正してほしい。
+
+#### 実装内容
+
+**`src/states/soldier.ts` の全兵種ステータスを修正**
+
+バトルルールと照合し、以下の項目を修正しました：
+
+- **将軍**: 射程 1→2、速度 5→2
+- **歩兵**: 攻撃 3→2、防御 3→2、速度 3→1
+- **弓兵**: 速度 3→1
+- **盾兵**: 防御 5→4、速度 2→1
+- **騎兵**: 攻撃 4→3、射程 1→2、速度 5→3
+
+#### 改善ポイント
+
+- ✅ 全ての兵種の速度が最大 3 以下（ルール準拠）となった
+- ✅ 攻撃力、防御力、射程もバトルルールの定義通りに修正
+- ✅ ゲームバランスがルールに基づいた正確なものになった
+
+
+---
+
+### 51. 移動可能範囲が軍の形状全体で表示されるように修正
+
+#### 問題
+
+- 移動モードで、軍の形状が2列（横2マス）なのに、移動可能範囲のハイライトが1列しか表示されていなかった
+
+#### 原因
+
+`src/lib/armyMovement.ts` の `calculateMovableTiles` 関数で、移動可能マスを追加する際に、軍の中心座標の1マスのみを追加していた。
+
+```tsx
+// 修正前（196行目）
+movableTiles.push({ x: targetX, y: targetY }); // 1つのマスのみ
+```
+
+#### 修正内容
+
+軍の全ての位置（`newPositions`）を移動可能マスとして追加するように変更。
+
+```tsx
+// 修正後
+movableTiles.push(...newPositions); // 軍の全positionsを追加
+```
+
+#### 改善ポイント
+
+- ✅ 軍の形状全体が移動可能範囲として表示される
+- ✅ 2列の軍なら2列分、3x3の軍なら9マス分の移動可能範囲が表示される
+- ✅ 移動後の軍の配置が視覚的に正確にわかる
+- ✅ バトルルールに従った正しい表示
+
+#### UX
+
+- 軍を選択すると、移動可能範囲が軍の形状全体で表示される
+- 2列の軍なら、移動可能範囲も2列で表示される
+- 移動先をクリックすると、軍全体がその位置に移動する
+- 移動後の配置が事前に視覚的に確認できる
+### 48. /battle アクセス時のステートリセット実装
+
+#### 要求
+
+- `/battle` にアクセスしたら全ての状態をリセットしてほしい
+
+#### 実装内容
+
+**1. Redux Slice**
+
+`src/states/slice.ts` に `resetState` アクションを追加しました。
+
+```typescript
+resetState: () => {
+  return initialState;
+},
+```
+
+**2. BattlePage**
+
+`src/routes/BattlePage.tsx` で `useEffect` を使用し、コンポーネントマウント時に `resetState()` を dispatch します。
+
+```tsx
+useEffect(() => {
+  dispatch(resetState());
+}, [dispatch]);
+```
+
+#### 改善ポイント
+
+- ✅ `/battle` にアクセスするたびに自動的にステートがリセットされる
+- ✅ 兵の配置、軍の編成、フェーズなど全ての状態が初期化される
+- ✅ 常に新鮮な状態でゲームを開始できる
+
+---
+
+### 52. 軍の移動可能範囲の表示と移動ロジックの修正
+
+#### 問題
+
+1. **移動可能マスが軍自身と被っている** - 先頭の1マス奥から開始すべき
+2. **移動可能マスの数がおかしい** - 騎兵のみの軍（速度3）なのに5マス分表示されている
+3. **移動先がずれる** - 移動モードを選択したマスが移動先になっており、軍の先頭がクリックした位置に来るべき
+
+#### 原因
+
+**1. `calculateMovableTiles`の問題**
+
+- 軍の中心座標を基準に移動可能マスを計算していた
+- その結果、軍の現在位置と移動可能マスが重複していた
+
+**2. `moveArmyToTile`の問題**
+
+- クリックしたマス（targetX, targetY）を軍の中心として移動させていた
+- 本来は軍の先頭（向きの方向の最前線）がクリックしたマスに来るべき
+
+#### 修正内容
+
+**1. `calculateMovableTiles`を修正 (`src/lib/armyMovement.ts`)**
+
+```tsx
+// 修正前
+// 軍の中心座標を使用して移動可能マスを計算
+const currentCenterX = Math.round(...);
+const currentCenterY = Math.round(...);
+targetX = currentCenterX;
+targetY = currentCenterY;
+
+// 修正後
+// 先頭位置から直接オフセットを計算
+const moveDistance = distance;
+const newFrontmostPosition = frontmostPosition + directionY * moveDistance;
+let offsetX = 0;
+let offsetY = 0;
+if (directionY !== 0) {
+  offsetY = newFrontmostPosition - frontmostPosition;
+} else {
+  offsetX = newFrontmostPosition - frontmostPosition;
+}
+```
+
+**2. `moveArmyToTile`を修正 (`src/states/slice.ts`)**
+
+```tsx
+// 修正前
+// 軍の中心座標を計算
+const centerX = Math.round(avgX);
+const centerY = Math.round(avgY);
+// オフセットを計算
+const offsetX = targetX - centerX;
+const offsetY = targetY - centerY;
+
+// 修正後
+// 軍の向きに基づいて、最前線の位置を見つける
+switch (army.direction) {
+  case "UP":
+    frontmostPosition = Math.min(...troopsInArmy.map((t) => t.y));
+    directionAxis = "y";
+    break;
+  // ...
+}
+
+// クリックしたマスが新しい最前線の位置になるように、オフセットを計算
+if (directionAxis === "y") {
+  offsetY = targetY - frontmostPosition;
+} else {
+  offsetX = targetX - frontmostPosition;
+}
+```
+
+#### 改善ポイント
+
+- ✅ **移動可能マスが軍自身と被らない**: 先頭の1マス奥から開始
+- ✅ **移動可能マスの数が正確**: 速度3なら3マス×軍の幅で表示
+- ✅ **移動先が正確**: 軍の先頭がクリックした位置に来る
+- ✅ **向きに応じた正確な移動**: 上下左右どの向きでも正しく動作
+
+#### UX
+
+- 軍を選択すると、移動可能範囲が軍の先頭から1マス奥から表示される
+- 速度3の軍なら、3マス×軍の幅分の移動可能範囲が表示される
+- 移動可能マスをクリックすると、軍の先頭がクリックした位置に移動する
+- 移動後の配置が事前に視覚的に正確に確認できる
+### 49. ヘッダーレイアウトの修正
+
+#### 問題
+
+- ヘッダーが左メニューのタブ部分に被っていた
+- ヘッダーが左右のサイドバーにも到達していた
+
+#### 要求
+
+- ヘッダーは左右メニューには到達せず、マップの中で横幅 100%としたい
+
+#### 実装内容
+
+**1. BattlePage.tsx**
+
+ヘッダーを`LayoutHeader`（グローバル配置）から`LayoutMain`（マップエリア）内に移動しました。
+
+```tsx
+<LayoutMain>
+  <Header />
+  <div className="h-[calc(100vh-88px)]">
+    <BattleMap />
+  </div>
+</LayoutMain>
+```
+
+**2. Header/index.tsx**
+
+サイドバーを避けるための複雑な margin 計算を削除し、シンプルな`m-4`のみに変更しました。
+
+#### 改善ポイント
+
+- ✅ ヘッダーが左右のサイドバーに被らなくなった
+- ✅ ヘッダーがマップエリア内のみで横幅 100%になった
+- ✅ 左メニューのタブが正常にクリックできるようになった
+- ✅ レイアウトがシンプルで理解しやすくなった
+
+---
+
+### 53. 移動モードを全方向移動に仕様変更
+
+#### 要求
+
+- 移動モードで、向きに関係なく上下左右に移動できるようにしたい
+
+#### 実装内容
+
+**1. `calculateMovableTiles`を全面的に書き換え (`src/lib/armyMovement.ts`)**
+
+```tsx
+// 修正前：向きに基づいて1方向のみ移動可能
+switch (army.direction) {
+  case "UP":
+    directionY = -1;
+    break;
+  // ...
+}
+// 先頭から向きの方向へのみ移動可能マスを計算
+
+// 修正後：4方向すべてに移動可能
+const directions = [
+  { dx: 0, dy: -1 }, // 上
+  { dx: 0, dy: 1 },  // 下
+  { dx: -1, dy: 0 }, // 左
+  { dx: 1, dy: 0 },  // 右
+];
+
+for (const direction of directions) {
+  for (let distance = 1; distance <= armySpeed; distance++) {
+    // 各方向に速度分だけ移動可能マスを計算
+  }
+}
+```
+
+**2. `moveArmyToTile`をシンプルに変更 (`src/states/slice.ts`)**
+
+```tsx
+// 修正前：向きに基づいて最前線を計算
+switch (army.direction) {
+  case "UP":
+    frontmostPosition = Math.min(...troopsInArmy.map((t) => t.y));
+    // ...
+}
+
+// 修正後：軍の中心を基準にシンプルに計算
+const currentCenterX = Math.round(
+  troopsInArmy.reduce((sum, t) => sum + t.x, 0) / troopsInArmy.length
+);
+const currentCenterY = Math.round(
+  troopsInArmy.reduce((sum, t) => sum + t.y, 0) / troopsInArmy.length
+);
+
+// クリックしたマスが新しい中心になるように、オフセットを計算
+const offsetX = targetX - currentCenterX;
+const offsetY = targetY - currentCenterY;
+```
+
+#### 改善ポイント
+
+- ✅ **全方向移動**: 向きに関係なく上下左右すべての方向に移動可能
+- ✅ **移動可能範囲の可視化**: 軍の中心から上下左右に速度分だけ移動可能マスが表示される
+- ✅ **シンプルな移動ロジック**: 軍の中心をクリック位置に移動させるだけ
+- ✅ **衝突チェック**: 各方向で他の兵や軍との衝突、マップ境界をチェック
+- ✅ **方向ごとに独立**: ある方向が障害物でブロックされても、他の方向は移動可能
+
+#### UX
+
+- 軍を選択すると、上下左右4方向に移動可能範囲が十字状に表示される
+- 速度3の軍なら、各方向に3マス×軍の幅分の移動可能範囲が表示される
+- 移動可能マスをクリックすると、軍の中心がクリックした位置に移動する
+- 向きに縛られず、戦術的に自由な移動が可能になった
+
+---
+
+### 54. ヘッダーをマップコンテナ内に配置
+
+#### 要求
+
+- ヘッダーが左右メニューに被ってしまうので、マップ上部に配置したい
+- マップのコンテナを超す横幅にはしたくない
+
+#### 実装内容
+
+**1. BattlePageの構造を変更 (`src/routes/BattlePage.tsx`)**
+
+```tsx
+// 修正前
+<LayoutMain>
+  {/* フローティングヘッダー（絶対配置） */}
+  <div className="absolute top-0 left-0 right-0 z-50">
+    <Header />
+  </div>
+
+  {/* マップ */}
+  <div className="h-full bg-slate-800/50 border border-slate-700 overflow-hidden">
+    <BattleMap />
+  </div>
+</LayoutMain>
+
+// 修正後
+<LayoutMain>
+  <div className="h-full flex flex-col bg-slate-800/50 border border-slate-700 overflow-hidden">
+    {/* ヘッダー */}
+    <div className="p-4">
+      <Header />
+    </div>
+
+    {/* マップ */}
+    <div className="flex-1 overflow-hidden">
+      <BattleMap />
+    </div>
+  </div>
+</LayoutMain>
+```
+
+**2. Headerから動的マージン計算を削除 (`src/widgets/Header/index.tsx`)**
+
+```tsx
+// 修正前
+const leftOffset = phase === BATTLE_PHASE.PREPARATION ? `calc(16rem + ${baseMargin})` : baseMargin;
+const rightOffset = isRightSidebarOpen ? `calc(20rem + ${baseMargin})` : baseMargin;
+
+style={{
+  marginLeft: leftOffset,
+  marginRight: rightOffset,
+  transition: "margin 300ms ease-in-out",
+  // ...
+}}
+
+// 修正後
+style={{
+  background: "...",
+  backdropFilter: "blur(12px)",
+  boxShadow: "...",
+  // マージン計算なし
+}}
+```
+
+#### 改善ポイント
+
+- ✅ **マップコンテナ内に配置**: ヘッダーがマップの幅を超えなくなった
+- ✅ **flexレイアウト**: ヘッダーとマップを縦に並べて配置
+- ✅ **シンプルな構造**: 絶対配置を廃止し、通常のフローに
+- ✅ **左右サイドバーに干渉しない**: LayoutMainの範囲内に収まる
+- ✅ **ガラスモーフィズムは維持**: リキッドグラスデザインはそのまま
+
+#### UX
+
+- ヘッダーがマップコンテナの上部に配置される
+- 左右のサイドバーに被らない
+- マップの可視領域とヘッダーの幅が一致
+- レイアウトがより整然として見やすくなった
+
+---
+
+### 55. 移動可能マスから軍の現在位置を除外
+
+#### 要求
+
+- 移動モードで、兵がいるマス（軍の現在位置）は移動可能マスとして表示されないようにしてほしい
+
+#### 実装内容
+
+**`calculateMovableTiles`を修正 (`src/lib/armyMovement.ts`)**
+
+```tsx
+// 1. 軍の現在の位置をSetに変換（除外用）
+const currentPositionsSet = new Set(
+  army.positions.map((pos) => `${pos.x},${pos.y}`)
+);
+
+// 2. 移動可能マスを追加する際に、現在の位置を除外
+const validPositions = newPositions.filter(
+  (pos) => !currentPositionsSet.has(`${pos.x},${pos.y}`)
+);
+movableTiles.push(...validPositions);
+```
+
+#### 改善ポイント
+
+- ✅ **軍の現在位置を除外**: 兵がいるマスは移動可能マスとして表示されない
+- ✅ **Setを使用した高速検索**: `O(1)`で現在位置かどうかを判定
+- ✅ **移動後の位置のみ表示**: 実際に移動可能な位置のみがハイライトされる
+- ✅ **視覚的に明確**: 現在いる場所と移動先が明確に区別される
+
+#### UX
+
+- 軍を選択すると、現在の位置を除いた移動可能範囲が表示される
+- 軍が占有しているマスはハイライトされない
+- 移動先のみがハイライトされるため、どこに移動できるかが一目瞭然
+- より直感的でわかりやすい移動モード
+
+---
+
+### 56. 移動を上下左右1方向のみに制限
+
+#### 要求
+
+- 軍内のどのマスをクリックしても、軍として上下左右のいずれか1方向のみに移動するようにしたい
+- 横に移動するのであればy軸は変わらない
+- 縦に移動するのであればx軸は変わらない
+
+#### 問題
+
+現在の実装では、クリックしたマス（targetX, targetY）を軍の新しい中心として移動させていたため、斜めに移動してしまうことがあった。
+
+#### 実装内容
+
+**`moveArmyToTile`を修正 (`src/states/slice.ts`)**
+
+```tsx
+// 修正前
+// クリックしたマスが新しい中心になるように、オフセットを計算
+const offsetX = targetX - currentCenterX;
+const offsetY = targetY - currentCenterY;
+
+// 修正後
+// クリックしたマスとの差分を計算
+const diffX = targetX - currentCenterX;
+const diffY = targetY - currentCenterY;
+
+// 横方向または縦方向のいずれか1方向のみに移動
+// 差分の絶対値が大きい方向に移動する
+let offsetX = 0;
+let offsetY = 0;
+
+if (Math.abs(diffX) > Math.abs(diffY)) {
+  // 横方向の移動（x軸のみ変化、y軸は変わらない）
+  offsetX = diffX;
+} else {
+  // 縦方向の移動（y軸のみ変化、x軸は変わらない）
+  offsetY = diffY;
+}
+```
+
+#### 改善ポイント
+
+- ✅ **1方向のみに移動**: 上下左右のいずれか1方向のみに移動し、斜めには移動しない
+- ✅ **横移動時はy軸固定**: 横方向に移動する場合、y軸は変わらない
+- ✅ **縦移動時はx軸固定**: 縦方向に移動する場合、x軸は変わらない
+- ✅ **差分の絶対値で判定**: クリックしたマスが中心からどちらの方向に遠いかで移動方向を決定
+
+#### UX
+
+- 軍内のどのマスをクリックしても、軍として統一的に移動する
+- 横方向の移動可能マスをクリック → 軍が横方向のみに移動（y軸は変わらない）
+- 縦方向の移動可能マスをクリック → 軍が縦方向のみに移動（x軸は変わらない）
+- 斜め移動がなくなり、直感的でわかりやすい移動になった
+### 50. 左サイドバートグル機能の実装
+
+#### 要求
+
+- バトルモード中も左メニューを表示してほしい
+- 右メニューと同じように開閉ボタンを設置し、開閉できるようにしてほしい
+
+#### 実装内容
+
+**1. Redux State**
+
+`src/states/state.ts` に `isLeftSidebarOpen: boolean` を追加（初期値: true）
+
+**2. Redux Actions**
+
+`src/states/slice.ts` に `toggleLeftSidebar` アクションを追加
+
+**3. Aside Component**
+
+`src/widgets/Aside/index.tsx` を修正：
+
+- 準備フェーズのみ表示する条件を削除
+- 開閉ボタンを追加（右サイドバーと同じパターン）
+- 開閉状態に応じて幅と opacity を切り替え
+- バトルフェーズ時も表示されるが、コンテンツは「バトル中」と表示
+
+#### 改善ポイント
+
+- ✅ バトルモード中も左サイドバーが表示される
+- ✅ 右サイドバーと同じ UI パターンで開閉ボタンを実装
+- ✅ スムーズなアニメーション（300ms）
+- ✅ 一貫した UX（両側のサイドバーが同じ動作）
+
+---
+
+### 57. 移動方向の判定ロジックを改善
+
+#### 問題
+
+- 右側をクリックしたら下に移動するなど、移動の挙動がおかしい
+- 差分の絶対値のみで判定していたため、斜め方向の場合に意図しない方向に移動してしまっていた
+
+#### 実装内容
+
+**`moveArmyToTile`の方向判定ロジックを改善 (`src/states/slice.ts`)**
+
+```tsx
+// 修正前：差分の絶対値のみで判定
+if (Math.abs(diffX) > Math.abs(diffY)) {
+  offsetX = diffX;
+} else {
+  offsetY = diffY;
+}
+
+// 修正後：クリックしたマスの位置を正確に判定
+// 1. 上下左右のどの方向かを判定
+const isAbove = targetY < currentCenterY;
+const isBelow = targetY > currentCenterY;
+const isLeft = targetX < currentCenterX;
+const isRight = targetX > currentCenterX;
+
+// 2. 判定結果に基づいて移動方向を決定
+if (isAbove && !isLeft && !isRight) {
+  // 真上方向（y軸のみ変化）
+  offsetY = targetY - currentCenterY;
+} else if (isBelow && !isLeft && !isRight) {
+  // 真下方向（y軸のみ変化）
+  offsetY = targetY - currentCenterY;
+} else if (isLeft && !isAbove && !isBelow) {
+  // 真左方向（x軸のみ変化）
+  offsetX = targetX - currentCenterX;
+} else if (isRight && !isAbove && !isBelow) {
+  // 真右方向（x軸のみ変化）
+  offsetX = targetX - currentCenterX;
+} else if (isAbove && isLeft) {
+  // 左上 → 差分の絶対値が大きい方向に移動
+  if (Math.abs(targetY - currentCenterY) > Math.abs(targetX - currentCenterX)) {
+    offsetY = targetY - currentCenterY;
+  } else {
+    offsetX = targetX - currentCenterX;
+  }
+}
+// 右上、左下、右下も同様に判定
+```
+
+#### 改善ポイント
+
+- ✅ **真上・真下・真左・真右を優先**: まず真っ直ぐな方向を判定
+- ✅ **斜め方向の場合は差分で判定**: 斜めの場合のみ、差分の絶対値が大きい方向に移動
+- ✅ **より正確な方向判定**: クリックしたマスの位置に応じて正しい方向に移動
+- ✅ **8方向すべてに対応**: 上、下、左、右、左上、右上、左下、右下
+
+#### UX
+
+- 右側の移動可能マスをクリック → 右方向に移動
+- 左側の移動可能マスをクリック → 左方向に移動
+- 上側の移動可能マスをクリック → 上方向に移動
+- 下側の移動可能マスをクリック → 下方向に移動
+- 斜め方向の場合は、中心からの距離が大きい方向に移動
+
+---
+
+### 58. 移動量を軍の端を基準に計算
+
+#### 問題
+
+- 軍の外側に上下左右1マスの移動可能マスがあり、クリックすると軍自体は2マス移動したりする
+- 軍の中心を基準に移動量を計算していたため、実際の移動距離がクリックした位置と一致していなかった
+
+#### 実装内容
+
+**`moveArmyToTile`の移動量計算を修正 (`src/states/slice.ts`)**
+
+```tsx
+// 修正前：軍の中心を基準に移動量を計算
+const offsetX = targetX - currentCenterX;
+const offsetY = targetY - currentCenterY;
+
+// 修正後：移動方向の軍の端（最前線）を基準に移動量を計算
+// 1. 移動方向を決定（差分の絶対値が大きい方向）
+const diffX = targetX - currentCenterX;
+const diffY = targetY - currentCenterY;
+
+let moveDirection: "up" | "down" | "left" | "right";
+
+if (Math.abs(diffX) > Math.abs(diffY)) {
+  moveDirection = diffX > 0 ? "right" : "left";
+} else {
+  moveDirection = diffY > 0 ? "down" : "up";
+}
+
+// 2. 移動方向の軍の端（最前線）を見つける
+let frontPosition: number;
+
+if (moveDirection === "up") {
+  frontPosition = Math.min(...troopsInArmy.map((t) => t.y));
+  offsetY = targetY - frontPosition;
+} else if (moveDirection === "down") {
+  frontPosition = Math.max(...troopsInArmy.map((t) => t.y));
+  offsetY = targetY - frontPosition;
+} else if (moveDirection === "left") {
+  frontPosition = Math.min(...troopsInArmy.map((t) => t.x));
+  offsetX = targetX - frontPosition;
+} else if (moveDirection === "right") {
+  frontPosition = Math.max(...troopsInArmy.map((t) => t.x));
+  offsetX = targetX - frontPosition;
+}
+```
+
+#### 改善ポイント
+
+- ✅ **軍の端を基準に計算**: 移動方向の軍の端（最前線）からの距離を計算
+- ✅ **直感的な移動距離**: クリックした位置に軍の端が移動する
+- ✅ **上方向**: 最小のy座標（上端）を基準
+- ✅ **下方向**: 最大のy座標（下端）を基準
+- ✅ **左方向**: 最小のx座標（左端）を基準
+- ✅ **右方向**: 最大のx座標（右端）を基準
+
+#### 例
+
+**右方向に移動する場合**：
+- 軍の右端が x=12 にある
+- 移動可能マスが x=13 にある
+- offsetX = 13 - 12 = 1
+- 軍は1マスだけ右に移動
+
+**上方向に移動する場合**：
+- 軍の上端が y=10 にある
+- 移動可能マスが y=8 にある
+- offsetY = 8 - 10 = -2
+- 軍は2マス上に移動
+
+#### UX
+
+- 移動可能マスをクリックすると、軍の端がそのマスに移動する
+- クリックした位置と実際の移動距離が一致する
+- 1マス隣の移動可能マスをクリック → 軍は1マスだけ移動
+- より直感的で予測可能な移動動作
+### 51. 移動バリデーション機能の実装
+
+#### 要求
+
+移動可能マス上に以下が発生した場合にそのマスには移動できないルールを作ってほしい：
+
+- 騎兵は水マスに移動できない
+- 高さレベル 1 から 3 にはいけず、必ず 1 ずつ乗り降りしなければいけない
+- 兵がいるマスには移動できない
+
+#### 実装内容
+
+**1. canMoveToPosition 関数の追加**
+
+`src/lib/armyMovement.ts` に新しいヘルパー関数を追加しました。
+
+**バリデーションルール：**
+
+- **騎兵の水マス制限**: 軍内に騎兵がいる場合、水マスへの移動を禁止
+- **高さレベル制限**: 移動元と移動先の高さの差が 1 以下でなければ移動不可
+- **占有マス制限**: 他の兵がいるマスには移動不可（既存機能を維持）
+
+**2. calculateMovableTiles 関数の更新**
+
+衝突チェックの後に`canMoveToPosition`を呼び出してバリデーションを実行。バリデーション失敗時はその方向への移動を停止。
+
+#### 改善ポイント
+
+- ✅ 騎兵を含む軍は水マスに移動できなくなった
+- ✅ 高さの異なる地形間の移動が段階的になった（±1 のみ）
+- ✅ 既存の占有マスチェックも維持
+- ✅ 移動ロジックが地形とバトルルールに準拠
+
+---
+
+### 59. バトル開始演出コンポーネントの実装
+
+#### 要求
+
+- バトルフェーズが開始されると、画面全体にリキッドグラス背景で「バトル開始」という大きい文字がセンターに表示される
+- ゆっくりフェードアウトしていく
+- 画面操作禁止
+- 後でターンごとにも使う予定なので共通化を見越した実装
+
+#### 実装内容
+
+**1. BattleAnnouncementコンポーネントを作成 (`src/widgets/BattleAnnouncement/index.tsx`)**
+
+```tsx
+export function BattleAnnouncement() {
+  const announcement = useAppSelector((state) => state.app.battleAnnouncement);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+
+  useEffect(() => {
+    if (announcement) {
+      setIsVisible(true);
+      setIsFadingOut(false);
+
+      // 2秒表示してからフェードアウト開始
+      const fadeOutTimer = setTimeout(() => {
+        setIsFadingOut(true);
+      }, 2000);
+
+      // フェードアウト完了後に非表示
+      const hideTimer = setTimeout(() => {
+        setIsVisible(false);
+        dispatch(clearBattleAnnouncement());
+      }, 3500); // 2秒表示 + 1.5秒フェードアウト
+
+      return () => {
+        clearTimeout(fadeOutTimer);
+        clearTimeout(hideTimer);
+      };
+    }
+  }, [announcement, dispatch]);
+}
+```
+
+**リキッドグラス背景**:
+- ヘッダーと同じスタイルを使用
+- グラデーション背景 + 装飾レイヤー + backdropFilter
+- より強い透明度とブラー効果（20px）
+
+**テキスト表示**:
+- 8xlの大きなフォント
+- 発光テキストシャドウ（青、紫、黒の多重シャドウ）
+- subText（オプション）も表示可能
+
+**2. Reduxの状態を追加 (`src/states/state.ts`)**
+
+```tsx
+export type AppState = {
+  // ...
+  battleAnnouncement: {
+    text: string;
+    subText?: string;
+  } | null;
+};
+```
+
+**3. アクションを追加 (`src/states/slice.ts`)**
+
+```tsx
+// バトル開始時にアナウンスを表示
+startBattle: (state) => {
+  state.phase = BATTLE_PHASE.BATTLE;
+  state.turn = 1;
+  state.battleAnnouncement = {
+    text: "バトル開始",
+  };
+},
+
+// アナウンスをクリアする
+clearBattleAnnouncement: (state) => {
+  state.battleAnnouncement = null;
+},
+```
+
+**4. BattlePageに追加 (`src/routes/BattlePage.tsx`)**
+
+```tsx
+<Layout>
+  <LayoutBody>
+    {/* ... */}
+  </LayoutBody>
+
+  {/* バトルアナウンス */}
+  <BattleAnnouncement />
+</Layout>
+```
+
+#### 改善ポイント
+
+- ✅ **共通化された設計**: text と subText を props で受け取り、様々な場面で使用可能
+- ✅ **リキッドグラス背景**: ヘッダーと統一感のあるデザイン
+- ✅ **自動フェードアウト**: 2秒表示 + 1.5秒フェードアウト
+- ✅ **画面操作禁止**: `pointer-events-none` で操作を無効化
+- ✅ **Redux管理**: 状態管理により任意のタイミングで表示可能
+- ✅ **クリーンアップ**: タイマーの適切なクリーンアップ
+
+#### 今後の拡張
+
+このコンポーネントは以下のような場面でも使用可能：
+
+```tsx
+// ターン開始
+state.battleAnnouncement = {
+  text: "ターン 5",
+  subText: "あなたのターン",
+};
+
+// 勝利
+state.battleAnnouncement = {
+  text: "勝利",
+  subText: "敵将軍を撃破しました",
+};
+```
+
+#### UX
+
+- バトル開始ボタンを押す
+- 画面全体にリキッドグラス背景が表示される
+- 「バトル開始」の文字が大きく表示される
+- 2秒間表示された後、1.5秒かけてゆっくりフェードアウト
+- フェードアウト完了後、自動的に非表示になる
+- 表示中は画面操作が禁止される

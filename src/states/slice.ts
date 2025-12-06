@@ -2,6 +2,7 @@ import type { PlacedTroop } from "@/lib/placement";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   BATTLE_PHASE,
+  PREPARATION_TAB,
   type PreparationTab,
   type RightSidebarTab,
   type ArmyFormationMode,
@@ -19,6 +20,11 @@ import {
   type ArmyDirection,
 } from "./army";
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from "./map";
+import {
+  calculateArmySpeed,
+  calculateMovableTiles,
+  moveArmy,
+} from "@/lib/armyMovement";
 
 export const slice = createSlice({
   name: "app",
@@ -28,6 +34,12 @@ export const slice = createSlice({
     startBattle: (state) => {
       state.phase = BATTLE_PHASE.BATTLE;
       state.turn = 1;
+      // バトル開始時は軍編成タブに切り替え
+      state.preparationTab = PREPARATION_TAB.FORM_ARMY;
+      // バトル開始アナウンスを表示
+      state.battleAnnouncement = {
+        text: "バトル開始",
+      };
     },
 
     // ユーザーが次のターンに進む
@@ -122,6 +134,11 @@ export const slice = createSlice({
       // モード切り替え時は選択状態をリセット
       state.selectionDragStart = null;
       state.selectionDragCurrent = null;
+
+      // 移動モードもリセット
+      state.battleMoveMode = BATTLE_MOVE_MODE.NONE;
+      state.movingArmyId = null;
+      state.movableTiles = null;
     },
 
     // ユーザーが矩形選択のドラッグを開始する
@@ -304,8 +321,143 @@ export const slice = createSlice({
     },
 
     // ユーザーが移動モードを切り替える
-    switchBattleMoveMode: (state, action: PayloadAction<BattleMoveMode>) => {
-      state.battleMoveMode = action.payload;
+    switchBattleMoveMode: (
+      state,
+      action: PayloadAction<{
+        mode: BattleMoveMode;
+        armyId?: string; // 移動モードの場合、対象の軍ID
+      }>
+    ) => {
+      state.battleMoveMode = action.payload.mode;
+
+      // 移動モードの場合、対象の軍IDを設定し、移動可能マスを計算
+      if (
+        action.payload.mode === BATTLE_MOVE_MODE.MOVE &&
+        action.payload.armyId
+      ) {
+        state.movingArmyId = action.payload.armyId;
+
+        const army = state.armies.find((a) => a.id === action.payload.armyId);
+        if (army) {
+          const armySpeed = calculateArmySpeed(army, state.placedTroops);
+          const movableTiles = calculateMovableTiles(
+            army,
+            armySpeed,
+            state.placedTroops,
+            state.armies
+          );
+          state.movableTiles = movableTiles;
+        }
+      } else {
+        state.movingArmyId = null;
+        state.movableTiles = null;
+      }
+    },
+
+    // ユーザーが軍を移動する
+    moveArmyToTile: (
+      state,
+      action: PayloadAction<{
+        armyId: string;
+        targetX: number;
+        targetY: number;
+      }>
+    ) => {
+      const { armyId, targetX, targetY } = action.payload;
+
+      const armyIndex = state.armies.findIndex((a) => a.id === armyId);
+      if (armyIndex === -1) return;
+
+      const army = state.armies[armyIndex];
+
+      // 軍内に実際に兵がいる座標を取得
+      const troopsInArmy = state.placedTroops.filter((troop) =>
+        army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
+      );
+
+      if (troopsInArmy.length === 0) return;
+
+      // 軍の中心座標を計算
+      const currentCenterX = Math.round(
+        troopsInArmy.reduce((sum, t) => sum + t.x, 0) / troopsInArmy.length
+      );
+      const currentCenterY = Math.round(
+        troopsInArmy.reduce((sum, t) => sum + t.y, 0) / troopsInArmy.length
+      );
+
+      // クリックしたマスが軍の中心からどの方向にあるかを判定
+      // 上下左右のいずれか1方向のみに移動する
+      let offsetX = 0;
+      let offsetY = 0;
+
+      // 1. まず上下左右のどの方向かを判定
+      const diffX = targetX - currentCenterX;
+      const diffY = targetY - currentCenterY;
+
+      // 2. 移動方向を決定（差分の絶対値が大きい方向）
+      let moveDirection: "up" | "down" | "left" | "right";
+
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        // 横方向
+        moveDirection = diffX > 0 ? "right" : "left";
+      } else {
+        // 縦方向
+        moveDirection = diffY > 0 ? "down" : "up";
+      }
+
+      // 3. 移動方向の軍の端（最前線）を見つける
+      let frontPosition: number;
+
+      if (moveDirection === "up") {
+        // 上方向：最小のy座標
+        frontPosition = Math.min(...troopsInArmy.map((t) => t.y));
+        offsetY = targetY - frontPosition;
+      } else if (moveDirection === "down") {
+        // 下方向：最大のy座標
+        frontPosition = Math.max(...troopsInArmy.map((t) => t.y));
+        offsetY = targetY - frontPosition;
+      } else if (moveDirection === "left") {
+        // 左方向：最小のx座標
+        frontPosition = Math.min(...troopsInArmy.map((t) => t.x));
+        offsetX = targetX - frontPosition;
+      } else if (moveDirection === "right") {
+        // 右方向：最大のx座標
+        frontPosition = Math.max(...troopsInArmy.map((t) => t.x));
+        offsetX = targetX - frontPosition;
+      }
+
+      // 軍の全positionsをオフセット分移動
+      const newPositions = army.positions.map((pos) => ({
+        x: pos.x + offsetX,
+        y: pos.y + offsetY,
+      }));
+
+      // 配列を更新
+      state.armies[armyIndex] = {
+        ...army,
+        positions: newPositions,
+      };
+
+      // placedTroopsも更新（兵の座標を軍の移動に合わせる）
+      const armyPositionsSet = new Set(
+        army.positions.map((pos) => `${pos.x},${pos.y}`)
+      );
+
+      state.placedTroops = state.placedTroops.map((troop) => {
+        if (armyPositionsSet.has(`${troop.x},${troop.y}`)) {
+          return {
+            ...troop,
+            x: troop.x + offsetX,
+            y: troop.y + offsetY,
+          };
+        }
+        return troop;
+      });
+
+      // 移動モードをリセット
+      state.battleMoveMode = BATTLE_MOVE_MODE.NONE;
+      state.movingArmyId = null;
+      state.movableTiles = null;
     },
 
     // ユーザーがマップエフェクトを発火する
@@ -326,6 +478,26 @@ export const slice = createSlice({
     // マップエフェクトをクリアする
     clearMapEffect: (state) => {
       state.mapEffect = null;
+    },
+
+    // 右サイドバーの開閉を切り替える
+    toggleRightSidebar: (state) => {
+      state.isRightSidebarOpen = !state.isRightSidebarOpen;
+    },
+
+    // 左サイドバーの開閉を切り替える
+    toggleLeftSidebar: (state) => {
+      state.isLeftSidebarOpen = !state.isLeftSidebarOpen;
+    },
+
+    // バトルアナウンスをクリアする
+    clearBattleAnnouncement: (state) => {
+      state.battleAnnouncement = null;
+    },
+
+    // ステートを初期状態にリセットする
+    resetState: () => {
+      return initialState;
     },
   },
 });
@@ -355,10 +527,15 @@ export const {
   deleteArmy,
   changeArmyDirection,
   switchBattleMoveMode,
+  moveArmyToTile,
   zoomInMap,
   zoomOutMap,
   triggerMapEffect,
   clearMapEffect,
+  toggleRightSidebar,
+  toggleLeftSidebar,
+  clearBattleAnnouncement,
+  resetState,
 } = slice.actions;
 
 export default slice.reducer;

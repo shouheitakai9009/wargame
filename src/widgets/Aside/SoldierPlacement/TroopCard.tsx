@@ -50,10 +50,13 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
     }
   };
 
-  const renderDots = (value: number, isHovered: boolean = false) => {
-    const max = 5;
+  const renderDots = (
+    value: number,
+    maxValue: number = 5,
+    isHovered: boolean = false
+  ) => {
     const dots = [];
-    for (let i = 0; i < max; i++) {
+    for (let i = 0; i < maxValue; i++) {
       dots.push(
         <div
           key={i}
@@ -204,7 +207,7 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
                     速度
                   </span>
                 </div>
-                {renderDots(stats.speed)}
+                {renderDots(stats.speed, 3)}
               </div>
             </div>
           </CardContent>
