@@ -7,18 +7,18 @@
 
 ### ディレクトリ構成
 
-- @docs/directory-structure.md
+- @.agent/rules/directory-structure.md
 
 ### バトルルール（ドメイン知識）
 
-- @docs/battle-rule.md
+- @.agent/rules/battle-rule.md
 
 ### コーディングルール
 
-- @docs/coding-rule.md
+- @.agent/rules/coding-rule.md
 
 ### 今までの会話履歴
 
 会話が発生するごとに以下ファイルの末尾に会話を書き込んでいくこと
 
-- @docs/conversation.md
+- @.agent/rules/conversation.md

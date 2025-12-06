@@ -18,6 +18,15 @@ import type { Army, ArmyColorKey } from "./army";
 import { initialArmies, initialPlacedTroops } from "../data/initialPlacement";
 
 /**
+ * コンテキストメニューの状態
+ */
+export type ContextMenuState = {
+  isOpen: boolean;
+  position: { x: number; y: number }; // 画面上のクリック座標
+  tile: { x: number; y: number }; // マップ上のタイル座標
+} | null;
+
+/**
  * アプリケーション全体の状態
  */
 export type AppState = {
@@ -85,6 +94,9 @@ export type AppState = {
     subText?: string;
   } | null;
 
+  // コンテキストメニュー
+  contextMenu: ContextMenuState;
+
   // 今後、他の状態もここに追加していく
   // 例: soldiers, armies, map など
 };
@@ -112,4 +124,5 @@ export const initialState: AppState = {
   isRightSidebarOpen: true,
   isLeftSidebarOpen: true,
   battleAnnouncement: null,
+  contextMenu: null,
 };

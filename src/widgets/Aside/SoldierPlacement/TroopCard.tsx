@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useCallback, useMemo, memo } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/designs/ui/card";
 import { Swords, ShieldCheck, Crosshair, Zap } from "lucide-react";
@@ -23,69 +23,137 @@ type Props = {
   };
 };
 
-export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
+export const TroopCard = memo(function TroopCard({
+  type,
+  name,
+  icon: Icon,
+  stats,
+  theme,
+}: Props) {
   const dispatch = useAppDispatch();
   const ref = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+
+  const onDragStart = useCallback(() => {
+    dispatch(beginTroopDrag());
+  }, [dispatch]);
+
+  const onDragEnd = useCallback(() => {
+    dispatch(endTroopDrag());
+  }, [dispatch]);
+
   const { dragProps, isDragging } = useDrag({
     getItems: () => [
       {
         "application/json": JSON.stringify({ type, theme }),
       },
     ],
-    onDragStart: () => {
-      dispatch(beginTroopDrag());
-    },
-    onDragEnd: () => {
-      dispatch(endTroopDrag());
-    },
+    onDragStart,
+    onDragEnd,
   });
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    // Ensure drag state is set immediately for visual feedback
-    dispatch(beginTroopDrag());
-    dragProps.onDragStart?.(e);
-    if (previewRef.current) {
-      e.dataTransfer.setDragImage(previewRef.current, 20, 20);
-    }
-  };
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      // Ensure drag state is set immediately for visual feedback
+      dispatch(beginTroopDrag());
+      dragProps.onDragStart?.(e);
+      if (previewRef.current) {
+        e.dataTransfer.setDragImage(previewRef.current, 20, 20);
+      }
+    },
+    [dispatch, dragProps]
+  );
 
-  const renderDots = (
-    value: number,
-    maxValue: number = 5,
-    isHovered: boolean = false
-  ) => {
-    const dots = [];
-    for (let i = 0; i < maxValue; i++) {
-      dots.push(
-        <div
-          key={i}
-          className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-            i < value
-              ? isHovered
-                ? "bg-white scale-125"
-                : "bg-white/90"
-              : "bg-white/20"
-          }`}
-          style={{
-            boxShadow:
-              i < value && isHovered ? `0 0 8px ${theme.primary}` : "none",
-            animationDelay: `${i * 50}ms`,
-          }}
-        />
-      );
-    }
-    return <div className="flex gap-1">{dots}</div>;
-  };
+  const renderDots = useCallback(
+    (value: number, maxValue: number = 5, isHovered: boolean = false) => {
+      const dots = [];
+      for (let i = 0; i < maxValue; i++) {
+        dots.push(
+          <div
+            key={i}
+            className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+              i < value
+                ? isHovered
+                  ? "bg-white scale-125"
+                  : "bg-white/90"
+                : "bg-white/20"
+            }`}
+            style={{
+              boxShadow:
+                i < value && isHovered ? `0 0 8px ${theme.primary}` : "none",
+              animationDelay: `${i * 50}ms`,
+            }}
+          />
+        );
+      }
+      return <div className="flex gap-1">{dots}</div>;
+    },
+    [theme.primary]
+  );
+
+  const handleMouseEnter = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.currentTarget.style.boxShadow = `
+      0 0 60px 8px ${theme.primary}90,
+      0 0 40px 4px ${theme.primary}70,
+      0 12px 48px ${theme.primary}80,
+      0 0 0 3px ${theme.primary}60,
+      inset 0 0 20px ${theme.primary}30
+    `;
+    },
+    [theme.primary]
+  );
+
+  const handleMouseLeave = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.currentTarget.style.boxShadow = `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`;
+    },
+    [theme.primary]
+  );
+
+  const cardStyle = useMemo(
+    () => ({
+      background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%)`,
+      boxShadow: `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`,
+      transition: "box-shadow 0.3s ease",
+    }),
+    [theme.primary, theme.secondary]
+  );
+
+  const iconBgStyle = useMemo(
+    () => ({
+      boxShadow: `0 4px 12px ${theme.primary}60`,
+    }),
+    [theme.primary]
+  );
+
+  const glowStyle = useMemo(
+    () => ({
+      background: `radial-gradient(circle at 50% 0%, ${theme.secondary}40, transparent 70%)`,
+    }),
+    [theme.secondary]
+  );
+
+  const accentLineStyle = useMemo(
+    () => ({
+      background: `linear-gradient(90deg, transparent, ${theme.secondary}, transparent)`,
+    }),
+    [theme.secondary]
+  );
+
+  const previewStyle = useMemo(
+    () => ({
+      backgroundColor: theme.primary,
+    }),
+    [theme.primary]
+  );
 
   return (
     <>
       <div
         ref={previewRef}
         className="absolute -top-[1000px] -left-[1000px] w-10 h-10 rounded-full flex items-center justify-center shadow-lg z-50"
-        style={{
-          backgroundColor: theme.primary,
-        }}
+        style={previewStyle}
       >
         <Icon size={24} className="text-white" />
       </div>
@@ -98,30 +166,14 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
       >
         <Card
           className="group relative overflow-hidden cursor-grab active:cursor-grabbing transition-all duration-500 hover:scale-105 hover:-translate-y-2 animate-in fade-in slide-in-from-bottom-4"
-          style={{
-            background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%)`,
-            boxShadow: `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`,
-            transition: "box-shadow 0.3s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = `
-              0 0 60px 8px ${theme.primary}90,
-              0 0 40px 4px ${theme.primary}70,
-              0 12px 48px ${theme.primary}80,
-              0 0 0 3px ${theme.primary}60,
-              inset 0 0 20px ${theme.primary}30
-            `;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = `0 4px 20px ${theme.primary}40, 0 0 0 1px ${theme.primary}20`;
-          }}
+          style={cardStyle}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           {/* Animated background glow */}
           <div
             className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-            style={{
-              background: `radial-gradient(circle at 50% 0%, ${theme.secondary}40, transparent 70%)`,
-            }}
+            style={glowStyle}
           />
 
           {/* Shimmer effect - 無限ループ（控えめ） */}
@@ -140,9 +192,7 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
             <div className="flex items-center gap-3">
               <div
                 className="p-3 rounded-xl bg-white/20 backdrop-blur-sm transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-white/30"
-                style={{
-                  boxShadow: `0 4px 12px ${theme.primary}60`,
-                }}
+                style={iconBgStyle}
               >
                 <Icon size={28} className="text-white drop-shadow-lg" />
               </div>
@@ -215,12 +265,10 @@ export function TroopCard({ type, name, icon: Icon, stats, theme }: Props) {
           {/* Bottom accent line */}
           <div
             className="absolute bottom-0 left-0 right-0 h-1 opacity-50 group-hover:opacity-100 transition-opacity duration-300"
-            style={{
-              background: `linear-gradient(90deg, transparent, ${theme.secondary}, transparent)`,
-            }}
+            style={accentLineStyle}
           />
         </Card>
       </div>
     </>
   );
-}
+});

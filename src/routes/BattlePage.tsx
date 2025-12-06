@@ -5,6 +5,7 @@ import { Aside } from "../widgets/Aside";
 import { RightSidebar } from "../widgets/RightSidebar";
 import { BattleMap } from "../widgets/Map";
 import { BattleAnnouncement } from "../widgets/BattleAnnouncement";
+import { GlobalContextMenu } from "../widgets/GlobalContextMenu";
 import { useAppDispatch } from "../states";
 import { resetState } from "../states/slice";
 
@@ -38,6 +39,9 @@ export default function BattlePage() {
 
       {/* バトルアナウンス */}
       <BattleAnnouncement />
+
+      {/* グローバルコンテキストメニュー */}
+      <GlobalContextMenu />
     </Layout>
   );
 }

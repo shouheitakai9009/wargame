@@ -495,6 +495,34 @@ export const slice = createSlice({
       state.battleAnnouncement = null;
     },
 
+    // ユーザーがコンテキストメニューを開く
+    openContextMenu: (
+      state,
+      action: PayloadAction<{
+        x: number;
+        y: number;
+        tileX: number;
+        tileY: number;
+      }>
+    ) => {
+      state.contextMenu = {
+        isOpen: true,
+        position: {
+          x: action.payload.x,
+          y: action.payload.y,
+        },
+        tile: {
+          x: action.payload.tileX,
+          y: action.payload.tileY,
+        },
+      };
+    },
+
+    // ユーザーがコンテキストメニューを閉じる
+    closeContextMenu: (state) => {
+      state.contextMenu = null;
+    },
+
     // ステートを初期状態にリセットする
     resetState: () => {
       return initialState;
@@ -535,6 +563,8 @@ export const {
   toggleRightSidebar,
   toggleLeftSidebar,
   clearBattleAnnouncement,
+  openContextMenu,
+  closeContextMenu,
   resetState,
 } = slice.actions;
 

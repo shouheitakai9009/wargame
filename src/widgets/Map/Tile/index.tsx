@@ -3,25 +3,16 @@ import { useAppDispatch, useAppSelector } from "@/states";
 import { shallowEqual } from "react-redux";
 import {
   placeTroop,
-  removeTroop,
   showError,
-  switchArmyFormationMode,
   beginSelectionDrag,
   updateSelectionDrag,
-  changeArmyDirection,
-  switchBattleMoveMode,
   moveArmyToTile,
-  triggerMapEffect,
-  openArmyPopover,
-  deleteArmy,
+  openContextMenu,
 } from "@/states/slice";
 import {
   ARMY_FORMATION_MODE,
-  BATTLE_PHASE,
   BATTLE_MOVE_MODE,
-  MAP_EFFECT,
 } from "@/states/battle";
-import { ARMY_DIRECTION } from "@/states/army";
 import { TERRAIN_COLORS } from "../../../designs/colors";
 import { TERRAIN_TYPE, type Terrain } from "../../../states/terrain";
 import { TILE_SIZE } from "@/states/map";
@@ -35,16 +26,6 @@ import type { LucideIcon } from "lucide-react";
 import { Crown, Swords, Target, Shield, Flame } from "lucide-react";
 import { getTerrainEffect } from "@/lib/terrainEffect";
 import { useDrop } from "@react-aria/dnd";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-} from "@/designs/ui/context-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -236,11 +217,6 @@ export const Tile = memo(
       [troopOnTile, terrain]
     );
 
-    // イベントハンドラをメモ化
-    const handleRemoveTroop = useCallback(() => {
-      dispatch(removeTroop({ x, y }));
-    }, [dispatch, x, y]);
-
     // 矩形選択のマウスイベントハンドラー
     const handleMouseDown = useCallback(
       (e: React.MouseEvent) => {
@@ -270,71 +246,6 @@ export const Tile = memo(
       }
     }, [armyFormationMode, selectionDragStart, dispatch, x, y]);
 
-    const handleContextMenu = useCallback(
-      (item: string) => {
-        if (item === "軍選択モード") {
-          dispatch(
-            switchArmyFormationMode({ mode: ARMY_FORMATION_MODE.SELECT })
-          );
-        } else if (item === "軍分割モード") {
-          // 軍に属している場合、その軍IDを渡して分割モードに切り替える
-          if (belongingArmy) {
-            dispatch(
-              switchArmyFormationMode({
-                mode: ARMY_FORMATION_MODE.SPLIT,
-                armyId: belongingArmy.id,
-              })
-            );
-          }
-        } else if (item === "移動モード") {
-          if (belongingArmy) {
-            dispatch(
-              switchBattleMoveMode({
-                mode: BATTLE_MOVE_MODE.MOVE,
-                armyId: belongingArmy.id,
-              })
-            );
-          }
-        } else if (item === "軍編成") {
-          // 軍に属している場合、その軍のポップオーバーを開く
-          if (belongingArmy) {
-            dispatch(
-              openArmyPopover({
-                positions: belongingArmy.positions,
-                armyId: belongingArmy.id,
-              })
-            );
-          }
-        }
-      },
-      [dispatch, belongingArmy]
-    );
-
-    const handleChangeDirection = useCallback(
-      (direction: (typeof ARMY_DIRECTION)[keyof typeof ARMY_DIRECTION]) => {
-        if (belongingArmy) {
-          dispatch(
-            changeArmyDirection({ armyId: belongingArmy.id, direction })
-          );
-
-          // 向き変更エフェクトを発火
-          dispatch(
-            triggerMapEffect({
-              type: MAP_EFFECT.DIRECTION_CHANGE,
-              direction: direction as "UP" | "DOWN" | "LEFT" | "RIGHT",
-            })
-          );
-        }
-      },
-      [dispatch, belongingArmy]
-    );
-
-    const handleDeleteArmy = useCallback(() => {
-      if (belongingArmy) {
-        dispatch(deleteArmy(belongingArmy.id));
-      }
-    }, [dispatch, belongingArmy]);
-
     const handleTileClick = useCallback(() => {
       // 移動モードで移動可能マスをクリックした場合
       if (
@@ -348,6 +259,21 @@ export const Tile = memo(
       }
     }, [battleMoveMode, movingArmyId, isMovableTile, dispatch, x, y]);
 
+    const handleContextMenuOpen = useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault(); // ブラウザデフォルトメニューを防止
+        dispatch(
+          openContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            tileX: x,
+            tileY: y,
+          })
+        );
+      },
+      [dispatch, x, y]
+    );
+
     const tileContent = (
       <div
         ref={ref}
@@ -355,6 +281,7 @@ export const Tile = memo(
         onMouseDown={handleMouseDown}
         onMouseEnter={handleMouseEnter}
         onClick={handleTileClick}
+        onContextMenu={handleContextMenuOpen}
         className="transition-all duration-200 relative flex items-center justify-center overflow-hidden"
         style={{
           width: TILE_SIZE,
@@ -647,144 +574,20 @@ export const Tile = memo(
       </TooltipContent>
     ) : null;
 
-    // コンテキストメニューの内容
-    const contextMenuContent = (
-      <ContextMenuContent>
-        {/* 軍に属している場合は「軍編成」を最上部に表示 */}
-        {belongingArmy && (
-          <>
-            <ContextMenuItem onClick={() => handleContextMenu("軍編成")}>
-              軍編成
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-          </>
-        )}
-
-        {/* 軍選択モード（準備フェーズのみ） */}
-        {phase === BATTLE_PHASE.PREPARATION && (
-          <ContextMenuItem onClick={() => handleContextMenu("軍選択モード")}>
-            軍選択モード
-            {armyFormationMode === ARMY_FORMATION_MODE.SELECT && " ✓"}
-          </ContextMenuItem>
-        )}
-
-        {/* 軍に属している場合は「軍分割モード」を表示 */}
-        {belongingArmy && (
-          <ContextMenuItem onClick={() => handleContextMenu("軍分割モード")}>
-            軍分割モード
-            {armyFormationMode === ARMY_FORMATION_MODE.SPLIT && " ✓"}
-          </ContextMenuItem>
-        )}
-
-        {/* 軍に属している場合は「向き」のサブメニューを表示 */}
-        {belongingArmy && (
-          <ContextMenuSub>
-            <ContextMenuSubTrigger>向き</ContextMenuSubTrigger>
-            <ContextMenuSubContent>
-              {Object.entries(ARMY_DIRECTION).map(([key, value]) => (
-                <ContextMenuItem
-                  key={key}
-                  onClick={() => handleChangeDirection(value)}
-                >
-                  {key === "UP" && "上"}
-                  {key === "DOWN" && "下"}
-                  {key === "LEFT" && "左"}
-                  {key === "RIGHT" && "右"}
-                  {belongingArmy.direction === value && " ✓"}
-                </ContextMenuItem>
-              ))}
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-        )}
-
-        {/* バトルフェーズかつ軍に属している場合は「移動モード」を表示 */}
-        {phase === BATTLE_PHASE.BATTLE && belongingArmy && (
-          <ContextMenuItem onClick={() => handleContextMenu("移動モード")}>
-            移動モード
-          </ContextMenuItem>
-        )}
-
-        {/* 軍選択モードまたは軍分割モードの場合は「モードをキャンセル」を表示 */}
-        {(armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
-          armyFormationMode === ARMY_FORMATION_MODE.SPLIT) && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() =>
-                dispatch(
-                  switchArmyFormationMode({ mode: ARMY_FORMATION_MODE.NONE })
-                )
-              }
-            >
-              モードをキャンセル
-            </ContextMenuItem>
-          </>
-        )}
-
-        {/* 移動モードの場合は「モードをキャンセル」を表示 */}
-        {battleMoveMode === BATTLE_MOVE_MODE.MOVE && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() =>
-                dispatch(switchBattleMoveMode({ mode: BATTLE_MOVE_MODE.NONE }))
-              }
-            >
-              モードをキャンセル
-            </ContextMenuItem>
-          </>
-        )}
-
-        {/* 準備フェーズかつ軍に属している場合は「軍の削除」を表示 */}
-        {phase === BATTLE_PHASE.PREPARATION && belongingArmy && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem onClick={handleDeleteArmy} variant="destructive">
-              軍の削除
-            </ContextMenuItem>
-          </>
-        )}
-
-        {troopOnTile && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={handleRemoveTroop}
-              variant="destructive"
-              disabled={!!belongingArmy} // 軍に所属している場合は削除不可
-            >
-              兵の削除
-              {belongingArmy && " (軍に所属)"}
-            </ContextMenuItem>
-          </>
-        )}
-      </ContextMenuContent>
-    );
-
-    // 兵がいる場合はTooltipでラップするが、ContextMenuTriggerが直接DOM要素(tileContent)をラップするように構造を変更
+    // 兵がいる場合はTooltipでラップ
     if (troopOnTile) {
       return (
         <TooltipProvider>
           <Tooltip>
-            <ContextMenu>
-              <ContextMenuTrigger asChild>
-                <TooltipTrigger asChild>{tileContent}</TooltipTrigger>
-              </ContextMenuTrigger>
-              {contextMenuContent}
-            </ContextMenu>
+            <TooltipTrigger asChild>{tileContent}</TooltipTrigger>
             {tooltipContent}
           </Tooltip>
         </TooltipProvider>
       );
     }
 
-    // 兵がいない場合はContextMenuのみ
-    return (
-      <ContextMenu>
-        <ContextMenuTrigger asChild>{tileContent}</ContextMenuTrigger>
-        {contextMenuContent}
-      </ContextMenu>
-    );
+    // 兵がいない場合はそのまま返す
+    return tileContent;
   },
   (prevProps, nextProps) => {}
 );
