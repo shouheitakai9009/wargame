@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { calculateMoveDirection } from "@/lib/armyMovement";
 import {
   type Army,
   ARMY_COLORS,
@@ -189,39 +190,14 @@ export const armySlice = createSlice({
       if (armyIndex === -1) return;
 
       const army = state.armies[armyIndex];
-      const troopsInArmy = state.placedTroops.filter((troop) =>
-        army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
-      );
+      // 移動方向計算
+      const {
+        direction: moveDirection,
+        offsetX,
+        offsetY,
+      } = calculateMoveDirection(army, targetX, targetY, state.placedTroops);
 
-      if (troopsInArmy.length === 0) return;
-
-      // 前線計算
-      const frontlines = {
-        up: Math.min(...troopsInArmy.map((t) => t.y)),
-        down: Math.max(...troopsInArmy.map((t) => t.y)),
-        left: Math.min(...troopsInArmy.map((t) => t.x)),
-        right: Math.max(...troopsInArmy.map((t) => t.x)),
-      };
-
-      let moveDirection: "up" | "down" | "left" | "right";
-      let offsetX = 0;
-      let offsetY = 0;
-
-      if (targetY < frontlines.up) {
-        moveDirection = "up";
-        offsetY = targetY - frontlines.up;
-      } else if (targetY > frontlines.down) {
-        moveDirection = "down";
-        offsetY = targetY - frontlines.down;
-      } else if (targetX < frontlines.left) {
-        moveDirection = "left";
-        offsetX = targetX - frontlines.left;
-      } else if (targetX > frontlines.right) {
-        moveDirection = "right";
-        offsetX = targetX - frontlines.right;
-      } else {
-        return;
-      }
+      if (!moveDirection) return;
 
       let newDirection: ArmyDirection;
       switch (moveDirection) {

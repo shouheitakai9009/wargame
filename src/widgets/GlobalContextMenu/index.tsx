@@ -84,6 +84,8 @@ function MenuContent({
       tile,
       belongingArmy,
       dispatch,
+      armies,
+      placedTroops,
     }
   );
 

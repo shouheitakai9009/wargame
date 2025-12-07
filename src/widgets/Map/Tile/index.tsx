@@ -7,7 +7,14 @@ import {
   moveArmyToTile,
   updateSelectionDrag,
 } from "@/states/modules/army";
-import { ARMY_FORMATION_MODE, BATTLE_MOVE_MODE } from "@/states/battle";
+import { resetBattleMoveMode } from "@/states/modules/battle";
+import { triggerMapEffect } from "@/states/modules/map";
+import { calculateMoveDirection } from "@/lib/armyMovement";
+import {
+  ARMY_FORMATION_MODE,
+  BATTLE_MOVE_MODE,
+  MAP_EFFECT,
+} from "@/states/battle";
 import { TERRAIN_COLORS } from "../../../designs/colors";
 import { TERRAIN_TYPE, type Terrain } from "../../../states/terrain";
 import { TILE_SIZE } from "@/states/map";
@@ -46,6 +53,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     battleMoveMode,
     movingArmyId,
     movableTiles,
+    armies,
   } = useAppSelector(
     (state) => ({
       placedTroops: state.army.placedTroops,
@@ -55,6 +63,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
       battleMoveMode: state.battle.battleMoveMode,
       movingArmyId: state.battle.movingArmyId,
       movableTiles: state.battle.movableTiles,
+      armies: state.army.armies,
     }),
     shallowEqual
   );
@@ -159,11 +168,45 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
       movingArmyId &&
       isMovableTile
     ) {
+      const movingArmy = armies.find((a) => a.id === movingArmyId);
+
+      if (movingArmy) {
+        const { direction } = calculateMoveDirection(
+          movingArmy,
+          x,
+          y,
+          placedTroops
+        );
+
+        if (direction) {
+          dispatch(
+            triggerMapEffect({
+              type: MAP_EFFECT.DIRECTION_CHANGE,
+              direction: direction.toUpperCase() as
+                | "UP"
+                | "DOWN"
+                | "LEFT"
+                | "RIGHT",
+            })
+          );
+        }
+      }
+
       dispatch(
         moveArmyToTile({ armyId: movingArmyId, targetX: x, targetY: y })
       );
+      dispatch(resetBattleMoveMode());
     }
-  }, [battleMoveMode, movingArmyId, isMovableTile, dispatch, x, y]);
+  }, [
+    battleMoveMode,
+    movingArmyId,
+    isMovableTile,
+    dispatch,
+    x,
+    y,
+    armies,
+    placedTroops,
+  ]);
 
   const handleContextMenuOpen = useCallback(
     (e: React.MouseEvent) => {

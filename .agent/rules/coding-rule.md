@@ -1055,3 +1055,468 @@ function ArmyManagement() {
 ## マジックナンバーは必ず定数化する
 
 className に書く`w-[50]px`や hoge.length > 3 などのマジックナンバーは states/配下にドメインを切って定数化する
+
+## [MUST] useAppSelector はプリミティブ値を返すようにする
+
+`useAppSelector` を使用する際は、オブジェクトではなくプリミティブ値（string、number、boolean など）を返すようにしてください。これにより不要な再レンダリングを防ぎます。オブジェクトを返す必要がある場合は `shallowEqual` を使用して比較を最適化します。
+
+### 基本原則
+
+1. **プリミティブ値を返す**: 文字列、数値、真偽値などの単一の値を返す
+2. **オブジェクトを分割して取得**: 複数の値が必要な場合は、複数の `useAppSelector` に分割する
+3. **オブジェクトを返す場合は shallowEqual を使用**: やむを得ずオブジェクトを返す場合は等価性チェックを行う
+
+### ✅ 良い例
+
+```tsx
+import { useAppSelector } from "@/states";
+
+function ArmyPanel() {
+  // ✅ プリミティブ値を個別に取得
+  const isOpen = useAppSelector((state) => state.ui.isArmyPopoverOpen);
+  const isLoading = useAppSelector((state) => state.battle.isLoading);
+  const phase = useAppSelector((state) => state.battle.phase);
+  const armyCount = useAppSelector((state) => state.army.armies.length);
+
+  return (
+    <div>
+      {isOpen && <Popover />}
+      {isLoading && <Spinner />}
+      <p>Phase: {phase}</p>
+      <p>Armies: {armyCount}</p>
+    </div>
+  );
+}
+
+// ✅ オブジェクトを返す場合は shallowEqual を使用
+import { shallowEqual } from "react-redux";
+
+function ArmyStats() {
+  const armyStats = useAppSelector(
+    (state) => ({
+      name: state.army.selectedArmy?.name,
+      morale: state.army.selectedArmy?.morale,
+      direction: state.army.selectedArmy?.direction,
+    }),
+    shallowEqual // 等価性チェックを追加
+  );
+
+  return (
+    <div>
+      <h3>{armyStats.name}</h3>
+      <p>Morale: {armyStats.morale}</p>
+      <p>Direction: {armyStats.direction}</p>
+    </div>
+  );
+}
+```
+
+### ❌ 悪い例
+
+```tsx
+// ❌ アンチパターン: オブジェクト全体を分割代入で取得
+function ArmyPanel() {
+  // state.ui が変わるたびに新しいオブジェクトが生成され、毎回再レンダリングされる
+  const { isArmyPopoverOpen, isContextMenuOpen, editingArmy, contextMenu } =
+    useAppSelector((state) => state.ui);
+
+  return (
+    <div>
+      {isArmyPopoverOpen && <Popover />}
+      {/* ... */}
+    </div>
+  );
+}
+
+// ❌ アンチパターン: オブジェクトを返すが shallowEqual を使用していない
+function ArmyStats() {
+  // 毎回新しいオブジェクトが生成されるため、常に再レンダリングされる
+  const armyStats = useAppSelector((state) => ({
+    name: state.army.selectedArmy?.name,
+    morale: state.army.selectedArmy?.morale,
+    direction: state.army.selectedArmy?.direction,
+  }));
+
+  return (
+    <div>
+      <h3>{armyStats.name}</h3>
+      <p>Morale: {armyStats.morale}</p>
+    </div>
+  );
+}
+
+// ❌ アンチパターン: 不要な中間オブジェクトを返す
+function BattleView() {
+  const battleState = useAppSelector((state) => state.battle);
+
+  // battleState オブジェクト全体が変わるたびに再レンダリング
+  return <div>{battleState.phase}</div>;
+}
+```
+
+## [MUST] useAppSelector 内で派生状態を計算する
+
+Redux の state から計算可能な値は、`useAppSelector` 内で計算を済ませてください。これによりコンポーネント内のロジックがシンプルになり、パフォーマンスも向上します。
+
+### 基本原則
+
+1. **複数の state を組み合わせた条件**: selector 内で計算する
+2. **真偽値の組み合わせ**: selector 内で論理演算を行う
+3. **配列のフィルタリング・変換**: selector 内で処理する
+
+### ✅ 良い例
+
+```tsx
+function BattleView() {
+  // ✅ selector 内で計算を済ませる
+  const shouldShowContent = useAppSelector(
+    (state) => state.ui.isOpen && !state.battle.isLoading
+  );
+
+  const canStartBattle = useAppSelector(
+    (state) =>
+      state.army.armies.length >= 1 &&
+      state.battle.phase === BATTLE_PHASE.PREPARATION
+  );
+
+  const activeTroops = useAppSelector((state) =>
+    state.army.placedTroops.filter((troop) => troop.hp > 0)
+  );
+
+  const totalArmyHealth = useAppSelector((state) =>
+    state.army.armies.reduce((sum, army) => sum + army.totalHealth, 0)
+  );
+
+  return (
+    <div>
+      {shouldShowContent && <Content />}
+      {canStartBattle && <StartButton />}
+      <p>Active Troops: {activeTroops.length}</p>
+      <p>Total Health: {totalArmyHealth}</p>
+    </div>
+  );
+}
+
+// ✅ 複雑な計算は useMemo と組み合わせる
+function ArmyList() {
+  const armies = useAppSelector((state) => state.army.armies);
+
+  const sortedArmies = useMemo(
+    () => [...armies].sort((a, b) => b.morale - a.morale),
+    [armies]
+  );
+
+  return (
+    <div>
+      {sortedArmies.map((army) => (
+        <ArmyCard key={army.id} army={army} />
+      ))}
+    </div>
+  );
+}
+```
+
+### ❌ 悪い例
+
+```tsx
+function BattleView() {
+  // ❌ アンチパターン: 複数回 selector を呼び出してコンポーネント内で計算
+  const isOpen = useAppSelector((state) => state.ui.isOpen);
+  const isLoading = useAppSelector((state) => state.battle.isLoading);
+
+  // コンポーネント内で計算（selector 内で行うべき）
+  const shouldShowContent = isOpen && !isLoading;
+
+  return <div>{shouldShowContent && <Content />}</div>;
+}
+
+// ❌ アンチパターン: 配列を取得してからコンポーネント内でフィルタリング
+function TroopList() {
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+
+  // コンポーネント内でフィルタリング（selector 内で行うべき）
+  const activeTroops = placedTroops.filter((troop) => troop.hp > 0);
+
+  return (
+    <div>
+      {activeTroops.map((troop) => (
+        <TroopCard key={troop.id} troop={troop} />
+      ))}
+    </div>
+  );
+}
+
+// ❌ アンチパターン: 複数の条件を個別に取得
+function StartBattleButton() {
+  const armyCount = useAppSelector((state) => state.army.armies.length);
+  const phase = useAppSelector((state) => state.battle.phase);
+
+  // コンポーネント内で条件判定（selector 内で行うべき）
+  const canStart = armyCount >= 1 && phase === BATTLE_PHASE.PREPARATION;
+
+  return <button disabled={!canStart}>Start Battle</button>;
+}
+```
+
+## [MUST] useEffect 内でステート更新を行わない
+
+`useEffect` 内でのステート更新は、React の「You Might Not Need an Effect」アンチパターンに該当します。ステート更新は、イベントハンドラー、レンダリング時の計算、または `key` 属性を使用した自動リセットで行ってください。
+
+### 基本原則
+
+1. **イベントハンドラーで更新**: ユーザー操作に応じた更新はイベントハンドラーで行う
+2. **レンダリング時に計算**: 派生状態はレンダリング時に計算する
+3. **key 属性でリセット**: コンポーネントの状態をリセットする場合は `key` を使用する
+4. **外部システムとの同期のみ**: `useEffect` は外部システム（API、イベントリスナーなど）との同期にのみ使用する
+
+### ✅ 良い例
+
+```tsx
+// ✅ イベントハンドラーでステート更新
+function ArmyForm({ army }: { army: Army }) {
+  const [editingName, setEditingName] = useState(army?.name ?? "");
+
+  const handleConfirm = () => {
+    dispatch(updateArmyName(editingName));
+    setEditingName(""); // イベントハンドラー内で更新
+  };
+
+  const handleCancel = () => {
+    setEditingName(army?.name ?? ""); // イベントハンドラー内でリセット
+  };
+
+  return (
+    <form>
+      <input value={editingName} onChange={(e) => setEditingName(e.target.value)} />
+      <button onClick={handleConfirm}>確定</button>
+      <button onClick={handleCancel}>キャンセル</button>
+    </form>
+  );
+}
+
+// ✅ key 属性を使用してステートを自動リセット
+function ArmyEditor() {
+  const editingArmy = useAppSelector((state) => state.ui.editingArmy);
+
+  // editingArmy が変わるとコンポーネント全体が再マウントされ、状態が自動リセット
+  return <ArmyForm key={editingArmy?.id} army={editingArmy} />;
+}
+
+// ✅ 外部システムとの同期（許容される useEffect の使用例）
+function GlobalEventHandler() {
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    // 外部イベントリスナーとの同期
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        dispatch(closeContextMenu());
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dispatch]);
+
+  return null;
+}
+```
+
+### ❌ 悪い例
+
+```tsx
+// ❌ アンチパターン: useEffect 内でステート更新
+function ArmyForm({ army }: { army: Army }) {
+  const [editingName, setEditingName] = useState("");
+
+  // useEffect でのステート同期（アンチパターン）
+  useEffect(() => {
+    if (army) {
+      setEditingName(army.name); // ❌ 2回のレンダリングが発生
+    }
+  }, [army]);
+
+  return (
+    <form>
+      <input value={editingName} onChange={(e) => setEditingName(e.target.value)} />
+    </form>
+  );
+}
+
+// ❌ アンチパターン: useEffect で props の変更に応じてステート更新
+function Counter({ initialCount }: { initialCount: number }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    setCount(initialCount); // ❌ props が変わるたびに再レンダリング
+  }, [initialCount]);
+
+  return <div>{count}</div>;
+}
+
+// ❌ アンチパターン: useEffect でステートをリセット
+function ContextMenu({ isOpen }: { isOpen: boolean }) {
+  const [subMenuOpen, setSubMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSubMenuOpen(false); // ❌ key 属性を使うべき
+    }
+  }, [isOpen]);
+
+  return <div>{/* ... */}</div>;
+}
+```
+
+## [MUST] 計算量を考慮したパフォーマンス最適化
+
+このアプリケーションはパフォーマンスが非常に重要です。特に O(n²) 以上の計算量になる処理は避け、即座にリファクタリングを行ってください。
+
+### 基本原則
+
+1. **ネストしたループを避ける**: O(n²) の処理は Map や Set を使って O(n) に最適化する
+2. **useMemo でメモ化**: 高コストな計算は useMemo でキャッシュする
+3. **早期リターン**: 不要な計算をスキップする
+4. **インデックスを活用**: 配列の検索を頻繁に行う場合は Map/Object でインデックス化する
+
+### ✅ 良い例
+
+```tsx
+// ✅ Map を使って O(n²) → O(n) に最適化
+function ArmyOverlay() {
+  const armies = useAppSelector((state) => state.army.armies);
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+
+  const troopPositionMap = useMemo(() => {
+    const map = new Map<string, PlacedTroop>();
+    placedTroops.forEach((troop) => {
+      map.set(`${troop.x},${troop.y}`, troop);
+    });
+    return map;
+  }, [placedTroops]);
+
+  const armiesWithTroops = useMemo(() => {
+    return armies.map((army) => ({
+      ...army,
+      troops: army.positions
+        .map((pos) => troopPositionMap.get(`${pos.x},${pos.y}`))
+        .filter(Boolean),
+    }));
+  }, [armies, troopPositionMap]);
+
+  return (
+    <div>
+      {armiesWithTroops.map((army) => (
+        <ArmyCard key={army.id} army={army} />
+      ))}
+    </div>
+  );
+}
+
+// ✅ 早期リターンで不要な計算をスキップ
+function BattleCalculation() {
+  const phase = useAppSelector((state) => state.battle.phase);
+  const armies = useAppSelector((state) => state.army.armies);
+
+  const battleResult = useMemo(() => {
+    // 早期リターン
+    if (phase !== BATTLE_PHASE.BATTLE) return null;
+    if (armies.length === 0) return null;
+
+    // 必要な場合のみ計算
+    return calculateBattleOutcome(armies);
+  }, [phase, armies]);
+
+  return battleResult ? <BattleResult result={battleResult} /> : null;
+}
+
+// ✅ インデックス化して検索を高速化
+function useTroopLookup() {
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+
+  const troopById = useMemo(() => {
+    const map = new Map<string, PlacedTroop>();
+    placedTroops.forEach((troop) => {
+      map.set(troop.id, troop);
+    });
+    return map;
+  }, [placedTroops]);
+
+  return {
+    getTroopById: (id: string) => troopById.get(id),
+    hasTroop: (id: string) => troopById.has(id),
+  };
+}
+```
+
+### ❌ 悪い例
+
+```tsx
+// ❌ アンチパターン: ネストしたループ（O(n²)）
+function ArmyOverlay() {
+  const armies = useAppSelector((state) => state.army.armies);
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+
+  const armiesWithTroops = armies.map((army) => ({
+    ...army,
+    troops: army.positions.map((pos) =>
+      // ❌ 内側のループで毎回全配列を検索（O(n²)）
+      placedTroops.find((troop) => troop.x === pos.x && troop.y === pos.y)
+    ),
+  }));
+
+  return (
+    <div>
+      {armiesWithTroops.map((army) => (
+        <ArmyCard key={army.id} army={army} />
+      ))}
+    </div>
+  );
+}
+
+// ❌ アンチパターン: レンダリングごとに高コストな計算
+function BattleView() {
+  const armies = useAppSelector((state) => state.army.armies);
+
+  // ❌ useMemo でメモ化していない（毎回計算される）
+  const totalPower = armies.reduce((sum, army) => {
+    return (
+      sum +
+      army.positions.reduce((armySum, pos) => {
+        const troop = findTroopAt(pos); // 高コストな検索
+        return armySum + (troop?.attack ?? 0);
+      }, 0)
+    );
+  }, 0);
+
+  return <div>Total Power: {totalPower}</div>;
+}
+
+// ❌ アンチパターン: 配列の find を繰り返し使用
+function TroopList({ troopIds }: { troopIds: string[] }) {
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+
+  return (
+    <div>
+      {troopIds.map((id) => {
+        // ❌ 毎回全配列を検索（O(n²)）
+        const troop = placedTroops.find((t) => t.id === id);
+        return troop ? <TroopCard key={id} troop={troop} /> : null;
+      })}
+    </div>
+  );
+}
+
+// ❌ アンチパターン: 不要な計算を毎回実行
+function MapOverlay() {
+  const phase = useAppSelector((state) => state.battle.phase);
+  const armies = useAppSelector((state) => state.army.armies);
+
+  // ❌ phase が PREPARATION でも計算が実行される
+  const battleResult = calculateBattleOutcome(armies); // 高コスト
+
+  return phase === BATTLE_PHASE.BATTLE ? (
+    <BattleResult result={battleResult} />
+  ) : null;
+}
+```

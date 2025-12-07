@@ -249,3 +249,57 @@ export function moveArmy(army: Army, targetX: number, targetY: number): Army {
     positions: newPositions,
   };
 }
+
+/**
+ * 移動方向を計算する
+ */
+export function calculateMoveDirection(
+  army: Army,
+  targetX: number,
+  targetY: number,
+  placedTroops: PlacedTroop[]
+): {
+  direction: "up" | "down" | "left" | "right" | null;
+  offsetX: number;
+  offsetY: number;
+} {
+  const troopsInArmy = placedTroops.filter((troop) =>
+    army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
+  );
+
+  if (troopsInArmy.length === 0) {
+    return { direction: null, offsetX: 0, offsetY: 0 };
+  }
+
+  // 前線計算
+  const frontlines = {
+    up: Math.min(...troopsInArmy.map((t) => t.y)),
+    down: Math.max(...troopsInArmy.map((t) => t.y)),
+    left: Math.min(...troopsInArmy.map((t) => t.x)),
+    right: Math.max(...troopsInArmy.map((t) => t.x)),
+  };
+
+  if (targetY < frontlines.up) {
+    return { direction: "up", offsetX: 0, offsetY: targetY - frontlines.up };
+  } else if (targetY > frontlines.down) {
+    return {
+      direction: "down",
+      offsetX: 0,
+      offsetY: targetY - frontlines.down,
+    };
+  } else if (targetX < frontlines.left) {
+    return {
+      direction: "left",
+      offsetX: targetX - frontlines.left,
+      offsetY: 0,
+    };
+  } else if (targetX > frontlines.right) {
+    return {
+      direction: "right",
+      offsetX: targetX - frontlines.right,
+      offsetY: 0,
+    };
+  }
+
+  return { direction: null, offsetX: 0, offsetY: 0 };
+}

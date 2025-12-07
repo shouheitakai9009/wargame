@@ -13,21 +13,12 @@ import { PlacementConstraints } from "./PlacementConstraints";
 import { useAppSelector, useAppDispatch } from "@/states";
 import { ARMY_FORMATION_MODE } from "@/states/battle";
 import {
-  openContextMenu,
-  closeContextMenu,
-  closeArmyPopover,
   showError,
   openArmyPopover,
   zoomInMap,
   zoomOutMap,
 } from "@/states/modules/ui";
-import {
-  endSelectionDrag,
-  updateSelectionDrag,
-  beginSelectionDrag,
-  switchArmyFormationMode,
-  splitArmy,
-} from "@/states/modules/army";
+import { endSelectionDrag, splitArmy } from "@/states/modules/army";
 import { validateArmySelection, validateArmySplit } from "@/lib/armyValidation";
 import { ArmyPopover } from "../ArmyPopover";
 import { ArmyOverlay } from "./ArmyOverlay";

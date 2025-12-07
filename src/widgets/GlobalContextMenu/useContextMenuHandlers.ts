@@ -15,17 +15,22 @@ import {
   MAP_EFFECT,
 } from "@/states/battle";
 import type { Army, ArmyDirection } from "@/states/army";
+import type { PlacedTroop } from "@/lib/placement";
 
 type UseContextMenuHandlersParams = {
   tile: { x: number; y: number };
   belongingArmy: Army | undefined;
   dispatch: AppDispatch;
+  armies: Army[];
+  placedTroops: PlacedTroop[];
 };
 
 export function useContextMenuHandlers({
   tile,
   belongingArmy,
   dispatch,
+  armies,
+  placedTroops,
 }: UseContextMenuHandlersParams) {
   const handleMenuItemClick = useCallback(
     (action: string) => {
@@ -61,6 +66,10 @@ export function useContextMenuHandlers({
               switchBattleMoveMode({
                 mode: BATTLE_MOVE_MODE.MOVE,
                 armyId: belongingArmy.id,
+                context: {
+                  armies,
+                  placedTroops,
+                },
               })
             );
           }
@@ -78,7 +87,7 @@ export function useContextMenuHandlers({
       }
       dispatch(closeContextMenu());
     },
-    [belongingArmy, dispatch, tile.x, tile.y]
+    [belongingArmy, dispatch, tile.x, tile.y, armies, placedTroops]
   );
 
   const handleChangeDirection = useCallback(
