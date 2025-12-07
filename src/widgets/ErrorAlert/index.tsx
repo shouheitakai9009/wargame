@@ -2,14 +2,14 @@ import { useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/designs/ui/alert";
 import { useAppDispatch, useAppSelector } from "@/states";
-import { hideError } from "@/states/slice";
+import { hideError } from "@/states/modules/ui";
 
 /**
  * エラーメッセージを画面上部中央に表示するコンポーネント
  */
 export default function ErrorAlert() {
   const dispatch = useAppDispatch();
-  const errorMessage = useAppSelector((state) => state.app.errorMessage);
+  const errorMessage = useAppSelector((state) => state.ui.errorMessage);
 
   useEffect(() => {
     if (errorMessage) {

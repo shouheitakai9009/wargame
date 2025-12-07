@@ -1,9 +1,14 @@
 import { useRef } from "react";
 import { useDrop } from "@react-aria/dnd";
 import { useAppDispatch, useAppSelector } from "@/states";
-import { placeTroop, showError } from "@/states/slice";
+import { placeTroop } from "@/states/modules/army";
+import { showError } from "@/states/modules/ui";
 import { TERRAIN_TYPE, type Terrain } from "@/states/terrain";
-import { canPlaceTroop, isPositionOccupied } from "@/lib/placement";
+import {
+  canPlaceTroop,
+  isPositionOccupied,
+  type PlacedTroop,
+} from "@/lib/placement";
 import type { SoldierType } from "@/states/soldier";
 
 type UseTileDropParams = {
@@ -20,7 +25,7 @@ export function useTileDrop({
   isPlacementZone,
 }: UseTileDropParams) {
   const dispatch = useAppDispatch();
-  const placedTroops = useAppSelector((state) => state.app.placedTroops);
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
   const ref = useRef<HTMLDivElement>(null);
 
   const { dropProps, isDropTarget } = useDrop({
@@ -55,10 +60,13 @@ export function useTileDrop({
           if (!canPlaceTroop(data.type, placedTroops)) {
             // Determine reason for failure
             const total = placedTroops.length;
-            const counts = placedTroops.reduce((acc, troop) => {
-              acc[troop.type] = (acc[troop.type] || 0) + 1;
-              return acc;
-            }, {} as Record<SoldierType, number>);
+            const counts = placedTroops.reduce(
+              (acc: Record<SoldierType, number>, troop: PlacedTroop) => {
+                acc[troop.type] = (acc[troop.type] || 0) + 1;
+                return acc;
+              },
+              {} as Record<SoldierType, number>
+            );
 
             if (total >= 30) {
               dispatch(showError("最大配置数（30体）を超えています"));

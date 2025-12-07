@@ -3,11 +3,10 @@ import { Layout, LayoutBody, LayoutMain } from "../designs/Layout";
 import { Header } from "../widgets/Header";
 import { Aside } from "../widgets/Aside";
 import { RightSidebar } from "../widgets/RightSidebar";
-import { BattleMap } from "../widgets/Map";
+import { Map as BattleMap } from "../widgets/Map";
 import { BattleAnnouncement } from "../widgets/BattleAnnouncement";
 import { GlobalContextMenu } from "../widgets/GlobalContextMenu";
-import { useAppDispatch } from "../states";
-import { resetState } from "../states/slice";
+import { useAppDispatch, resetState } from "../states";
 
 export default function BattlePage() {
   const dispatch = useAppDispatch();

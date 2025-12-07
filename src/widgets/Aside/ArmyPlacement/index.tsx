@@ -1,28 +1,31 @@
 import { useAppSelector } from "@/states";
-import type { Army } from "@/states/army";
-import { ARMY_COLORS, MAX_TROOP_HEALTH } from "@/states/army";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/designs/ui/card";
+  type Army,
+  ARMY_COLORS,
+  MAX_TROOP_HEALTH,
+  type ArmyColorKey,
+} from "@/states/army";
+import { type PlacedTroop } from "@/lib/placement";
+import { Card, CardHeader, CardTitle, CardContent } from "@/designs/ui/card";
 import { Shield } from "lucide-react";
 
 // 軍カードコンポーネント
 function ArmyCard({ army }: { army: Army }) {
-  const placedTroops = useAppSelector((state) => state.app.placedTroops);
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
 
   // 軍の色を取得
-  const armyColor = ARMY_COLORS[army.color];
+  const armyColor = ARMY_COLORS[army.color as unknown as ArmyColorKey];
 
   // 軍内の兵を取得（army.positionsと一致するplacedTroops）
-  const troopsInArmy = placedTroops.filter((troop) =>
+  const troopsInArmy = placedTroops.filter((troop: PlacedTroop) =>
     army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
   );
 
   // 合計兵力を計算
-  const totalHealth = troopsInArmy.reduce((sum, troop) => sum + troop.hp, 0);
+  const totalHealth = troopsInArmy.reduce(
+    (sum: number, troop: PlacedTroop) => sum + troop.hp,
+    0
+  );
   // 最大兵力を計算（兵数 × 最大兵力）
   const maxHealth = troopsInArmy.length * MAX_TROOP_HEALTH;
   // 兵力の割合（パーセンテージ）
@@ -79,7 +82,7 @@ function ArmyCard({ army }: { army: Army }) {
 
         {/* 下部アクセント */}
         <div
-          className="mt-3 h-[1px] w-3/4 mx-auto rounded-full"
+          className="mt-3 h-px w-3/4 mx-auto rounded-full"
           style={{
             background: `linear-gradient(90deg, transparent, ${armyColor.border}, transparent)`,
             boxShadow: `0 0 6px ${armyColor.shadow}`,
@@ -91,7 +94,8 @@ function ArmyCard({ army }: { army: Army }) {
         {/* 合計兵力 */}
         <div className="space-y-2">
           <div className="flex justify-between items-end px-1">
-            <label className="text-xs font-bold flex items-center gap-1.5"
+            <label
+              className="text-xs font-bold flex items-center gap-1.5"
               style={{ color: armyColor.border }}
             >
               <Shield className="w-3 h-3" /> 合計兵力
@@ -128,7 +132,7 @@ function ArmyCard({ army }: { army: Army }) {
                 }}
               >
                 {/* 光の反射（シマー） */}
-                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent" />
               </div>
             </div>
           </div>
@@ -144,10 +148,7 @@ function ArmyCard({ army }: { army: Army }) {
           <div className="flex justify-between px-1 text-xs">
             <span className="text-slate-500">兵力</span>
             <span className="font-mono">
-              <span
-                className="font-bold"
-                style={{ color: armyColor.border }}
-              >
+              <span className="font-bold" style={{ color: armyColor.border }}>
                 {totalHealth.toLocaleString()}
               </span>
               <span className="text-slate-600 mx-1">/</span>
@@ -163,15 +164,13 @@ function ArmyCard({ army }: { army: Army }) {
 }
 
 export function ArmyPlacement() {
-  const armies = useAppSelector((state) => state.app.armies);
+  const armies = useAppSelector((state) => state.army.armies);
 
   return (
     <div className="space-y-4">
       {armies.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-slate-400 text-sm">
-            まだ軍が編成されていません
-          </p>
+          <p className="text-slate-400 text-sm">まだ軍が編成されていません</p>
           <p className="text-slate-500 text-xs mt-2">
             マップ上で兵を選択して軍を編成してください
           </p>
@@ -179,17 +178,13 @@ export function ArmyPlacement() {
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-white">
-              編成済み軍
-            </h2>
-            <span className="text-sm text-slate-400">
-              {armies.length} / 9
-            </span>
+            <h2 className="text-lg font-semibold text-white">編成済み軍</h2>
+            <span className="text-sm text-slate-400">{armies.length} / 9</span>
           </div>
 
           {/* 軍カードのリスト */}
           <div className="space-y-3">
-            {armies.map((army) => (
+            {armies.map((army: Army) => (
               <ArmyCard key={army.id} army={army} />
             ))}
           </div>

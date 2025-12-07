@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   Check,
   X,
@@ -12,46 +11,22 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/designs/ui/popover";
 import { Input } from "@/designs/ui/input";
 import { Button } from "@/designs/ui/button";
-import { useAppDispatch, useAppSelector } from "@/states";
-import { closeArmyPopover, updateArmyName, confirmArmy } from "@/states/slice";
-import { MAX_MORALE, MAX_TROOP_HEALTH } from "@/states/army";
+import { useArmyPopover } from "./useArmyPopover";
 
 export function ArmyPopover() {
-  const dispatch = useAppDispatch();
-  const isOpen = useAppSelector((state) => state.app.isArmyPopoverOpen);
-  const editingArmy = useAppSelector((state) => state.app.editingArmy);
-  const placedTroops = useAppSelector((state) => state.app.placedTroops);
-  const [isEditMode, setIsEditMode] = useState(true);
-  const [localName, setLocalName] = useState("");
-
-  // editingArmyが変わったらlocalNameをリセット
-  useEffect(() => {
-    if (editingArmy) {
-      setLocalName(editingArmy.name);
-      setIsEditMode(true);
-    }
-  }, [editingArmy]);
+  const {
+    isOpen,
+    editingArmy,
+    localName,
+    setLocalName,
+    armyStats,
+    centerPosition,
+    handleConfirm,
+    handleCancel,
+    MAX_MORALE,
+  } = useArmyPopover();
 
   if (!editingArmy) return null;
-
-  // 軍の合計兵力を計算
-  const troopsInArmy = placedTroops.filter((troop) =>
-    editingArmy.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
-  );
-  const totalHealth = troopsInArmy.length * MAX_TROOP_HEALTH;
-  const maxHealth = troopsInArmy.length * MAX_TROOP_HEALTH;
-  const healthPercentage = (totalHealth / maxHealth) * 100;
-
-  const handleConfirm = () => {
-    dispatch(updateArmyName(localName));
-    dispatch(confirmArmy());
-    setIsEditMode(false);
-  };
-
-  const handleCancel = () => {
-    dispatch(closeArmyPopover());
-    setIsEditMode(true);
-  };
 
   // 向きアイコンの取得
   const getDirectionIcon = () => {
@@ -69,33 +44,29 @@ export function ArmyPopover() {
     }
   };
 
-  // 選択範囲の中心座標を計算
-  const centerX =
-    editingArmy.positions.reduce((sum, p) => sum + p.x, 0) /
-    editingArmy.positions.length;
-  const centerY =
-    editingArmy.positions.reduce((sum, p) => sum + p.y, 0) /
-    editingArmy.positions.length;
-
   return (
     <>
       {/* トリガー要素を選択範囲の中心に配置 */}
       <div
         style={{
           position: "absolute",
-          left: centerX * 50, // TILE_SIZE
-          top: centerY * 50,
+          left: centerPosition.x * 50, // TILE_SIZE
+          top: centerPosition.y * 50,
           width: 1,
           height: 1,
           pointerEvents: "none",
         }}
       >
-        <Popover open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
+        <Popover
+          key={editingArmy?.id}
+          open={isOpen}
+          onOpenChange={(open) => !open && handleCancel()}
+        >
           <PopoverTrigger asChild>
             <div style={{ width: 1, height: 1 }} />
           </PopoverTrigger>
           <PopoverContent
-            className="group w-96 relative overflow-hidden border-0 shadow-2xl p-0" // p-0を追加
+            className="group w-96 relative overflow-hidden border-0 shadow-2xl p-0"
             side="top"
             align="center"
             sideOffset={20}
@@ -160,41 +131,35 @@ export function ArmyPopover() {
                   <label className="font-bold text-xs text-blue-300 flex items-center gap-2">
                     軍名
                   </label>
-                  {isEditMode ? (
-                    <div className="flex gap-2">
-                      <Input
-                        value={localName}
-                        onChange={(e) => setLocalName(e.target.value)}
-                        placeholder="軍名を入力"
-                        className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner"
-                        style={{
-                          boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.2)",
-                        }}
-                        autoFocus
-                      />
-                      <Button
-                        size="icon"
-                        onClick={handleConfirm}
-                        className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
-                        style={{
-                          boxShadow: "0 0 20px rgba(16, 185, 129, 0.5)",
-                        }}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        onClick={handleCancel}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="text-xl font-bold text-white drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
-                      {editingArmy.name}
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      value={localName}
+                      onChange={(e) => setLocalName(e.target.value)}
+                      placeholder="軍名を入力"
+                      className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner"
+                      style={{
+                        boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.2)",
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      size="icon"
+                      onClick={handleConfirm}
+                      className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+                      style={{
+                        boxShadow: "0 0 20px rgba(16, 185, 129, 0.5)",
+                      }}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      onClick={handleCancel}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* 士気と向きを横並び */}
@@ -270,7 +235,7 @@ export function ArmyPopover() {
                       <Shield className="w-3 h-3" /> 合計兵力
                     </label>
                     <span className="text-xs font-mono text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]">
-                      {Math.round(healthPercentage)}%
+                      {Math.round(armyStats.percentage)}%
                     </span>
                   </div>
 
@@ -290,7 +255,7 @@ export function ArmyPopover() {
                       <div
                         className="h-full transition-all duration-500 ease-out relative"
                         style={{
-                          width: `${healthPercentage}%`,
+                          width: `${armyStats.percentage}%`,
                           background:
                             "linear-gradient(90deg, rgba(20,83,45,1) 0%, rgba(21,128,61,1) 50%, rgba(22,163,74,1) 100%)",
                           boxShadow: "0 0 15px rgba(22, 163, 74, 0.6)",
@@ -306,11 +271,11 @@ export function ArmyPopover() {
                   <div className="flex justify-end px-1">
                     <span className="text-sm font-bold font-mono text-white drop-shadow-[0_0_5px_rgba(22,163,74,0.8)]">
                       <span className="text-green-500">
-                        {totalHealth.toLocaleString()}
+                        {armyStats.currentHealth.toLocaleString()}
                       </span>
                       <span className="text-slate-600 mx-2">/</span>
                       <span className="text-slate-400 text-xs">
-                        {maxHealth.toLocaleString()}
+                        {armyStats.maxHealth.toLocaleString()}
                       </span>
                     </span>
                   </div>

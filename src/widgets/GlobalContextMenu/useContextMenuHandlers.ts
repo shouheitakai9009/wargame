@@ -1,15 +1,14 @@
 import { useCallback } from "react";
 import type { AppDispatch } from "@/states";
 import {
-  closeContextMenu,
   switchArmyFormationMode,
-  openArmyPopover,
   deleteArmy,
   removeTroop,
   changeArmyDirection,
-  triggerMapEffect,
-  switchBattleMoveMode,
-} from "@/states/slice";
+} from "@/states/modules/army";
+import { triggerMapEffect } from "@/states/modules/map";
+import { switchBattleMoveMode } from "@/states/modules/battle";
+import { closeContextMenu, openArmyPopover } from "@/states/modules/ui";
 import {
   ARMY_FORMATION_MODE,
   BATTLE_MOVE_MODE,

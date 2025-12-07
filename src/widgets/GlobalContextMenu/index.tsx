@@ -1,59 +1,78 @@
 import { useMemo } from "react";
-import { useAppDispatch, useAppSelector } from "@/states";
-import {
-  closeContextMenu,
-  switchArmyFormationMode,
-  switchBattleMoveMode,
-} from "@/states/slice";
+import { switchArmyFormationMode } from "@/states/modules/army";
+import { switchBattleMoveMode } from "@/states/modules/battle";
 import {
   BATTLE_PHASE,
   ARMY_FORMATION_MODE,
   BATTLE_MOVE_MODE,
 } from "@/states/battle";
+import { closeContextMenu } from "@/states/modules/ui";
+import { useAppDispatch, useAppSelector } from "@/states";
 import { ContextMenuItem } from "./ContextMenuItem";
 import { MenuDivider } from "./MenuDivider";
 import { DirectionSubMenu } from "./DirectionSubMenu";
 import { useContextMenuPosition } from "./useContextMenuPosition";
 import { useContextMenuHandlers } from "./useContextMenuHandlers";
 import { useMenuVisibility } from "./useMenuVisibility";
+import { type PlacedTroop } from "@/lib/placement";
+import { type Army } from "@/states/army";
 
 export function GlobalContextMenu() {
+  const contextMenu = useAppSelector((state) => state.ui.contextMenu);
+
+  // メニューが閉じている場合は何も表示しない
+  if (!contextMenu || !contextMenu.isOpen) {
+    return null;
+  }
+
+  return <MenuContent contextMenu={contextMenu} />;
+}
+
+function MenuContent({
+  contextMenu,
+}: {
+  contextMenu: {
+    isOpen: boolean;
+    tile: { x: number; y: number };
+    position: { x: number; y: number };
+  };
+}) {
   const dispatch = useAppDispatch();
-  const contextMenu = useAppSelector((state) => state.app.contextMenu);
-  const phase = useAppSelector((state) => state.app.phase);
-  const armies = useAppSelector((state) => state.app.armies);
-  const placedTroops = useAppSelector((state) => state.app.placedTroops);
+  const armies = useAppSelector((state) => state.army.armies);
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const phase = useAppSelector((state) => state.battle.phase);
   const armyFormationMode = useAppSelector(
-    (state) => state.app.armyFormationMode
+    (state) => state.army.armyFormationMode
   );
-  const battleMoveMode = useAppSelector((state) => state.app.battleMoveMode);
+  const battleMoveMode = useAppSelector((state) => state.battle.battleMoveMode);
 
   const { directionSubMenuOpen, setDirectionSubMenuOpen } = useMenuVisibility({
-    isOpen: contextMenu?.isOpen ?? false,
+    isOpen: true,
     dispatch,
   });
 
-  // tile と position を早期に取得（フックの前に）
+  // tile と position を早期に取得
   const tile = contextMenu?.tile ?? { x: 0, y: 0 };
   const position = contextMenu?.position ?? { x: 0, y: 0 };
 
   // クリックされたマスの情報を取得（useMemoで最適化）
   const troopOnTile = useMemo(
     () =>
-      contextMenu?.isOpen
-        ? placedTroops.find((troop) => troop.x === tile.x && troop.y === tile.y)
-        : undefined,
-    [contextMenu?.isOpen, placedTroops, tile.x, tile.y]
+      placedTroops.find(
+        (troop: PlacedTroop) => troop.x === tile.x && troop.y === tile.y
+      ),
+    [placedTroops, tile.x, tile.y]
   );
 
   const belongingArmy = useMemo(
     () =>
-      contextMenu?.isOpen
-        ? armies.find((army) =>
-            army.positions.some((pos) => pos.x === tile.x && pos.y === tile.y)
-          )
-        : undefined,
-    [contextMenu?.isOpen, armies, tile.x, tile.y]
+      armies.find((army: Army) =>
+        army.positions.some(
+          (pos: { x: number; y: number }) =>
+            pos.x === tile.x && pos.y === tile.y
+        )
+      ),
+    [armies, tile.x, tile.y]
   );
 
   // 位置計算フックを使用
@@ -67,11 +86,6 @@ export function GlobalContextMenu() {
       dispatch,
     }
   );
-
-  // メニューが閉じている場合は何も表示しない（全てのフックを呼び出した後）
-  if (!contextMenu || !contextMenu.isOpen) {
-    return null;
-  }
 
   return (
     <>

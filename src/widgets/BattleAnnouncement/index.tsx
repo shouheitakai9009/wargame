@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useAppSelector, useAppDispatch } from "../../states";
-import { clearBattleAnnouncement } from "../../states/slice";
+import { useAppSelector, useAppDispatch } from "@/states";
+import { clearBattleAnnouncement } from "@/states/modules/ui";
 
 export function BattleAnnouncement() {
   const dispatch = useAppDispatch();
-  const announcement = useAppSelector((state) => state.app.battleAnnouncement);
+  const announcement = useAppSelector((state) => state.ui.battleAnnouncement);
   const [isVisible, setIsVisible] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
 

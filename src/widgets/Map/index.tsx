@@ -1,4 +1,11 @@
-import { useRef, useState, useMemo, useEffect, type MouseEvent } from "react";
+import {
+  useRef,
+  useState,
+  useMemo,
+  useEffect,
+  type MouseEvent,
+  memo,
+} from "react";
 import { Tile } from "./Tile";
 import { initialMap } from "../../data/initialMap";
 import { MAP_SIZE, TILE_SIZE } from "@/states/map";
@@ -6,38 +13,46 @@ import { PlacementConstraints } from "./PlacementConstraints";
 import { useAppSelector, useAppDispatch } from "@/states";
 import { ARMY_FORMATION_MODE } from "@/states/battle";
 import {
+  openContextMenu,
+  closeContextMenu,
+  closeArmyPopover,
   showError,
-  endSelectionDrag,
   openArmyPopover,
   zoomInMap,
   zoomOutMap,
+} from "@/states/modules/ui";
+import {
+  endSelectionDrag,
+  updateSelectionDrag,
+  beginSelectionDrag,
+  switchArmyFormationMode,
   splitArmy,
-} from "@/states/slice";
+} from "@/states/modules/army";
 import { validateArmySelection, validateArmySplit } from "@/lib/armyValidation";
 import { ArmyPopover } from "../ArmyPopover";
 import { ArmyOverlay } from "./ArmyOverlay";
 import { MapEffectOverlay } from "./MapEffectOverlay";
 
-export const BattleMap = () => {
+export const Map = memo(function Map() {
   const dispatch = useAppDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const armyFormationMode = useAppSelector(
-    (state) => state.app.armyFormationMode
+    (state) => state.army.armyFormationMode
   );
   const selectionDragStart = useAppSelector(
-    (state) => state.app.selectionDragStart
+    (state) => state.army.selectionDragStart
   );
   const selectionDragCurrent = useAppSelector(
-    (state) => state.app.selectionDragCurrent
+    (state) => state.army.selectionDragCurrent
   );
-  const placedTroops = useAppSelector((state) => state.app.placedTroops);
-  const armies = useAppSelector((state) => state.app.armies);
-  const splittingArmyId = useAppSelector((state) => state.app.splittingArmyId);
+  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const armies = useAppSelector((state) => state.army.armies);
+  const splittingArmyId = useAppSelector((state) => state.army.splittingArmyId);
 
-  const mapZoomRatio = useAppSelector((state) => state.app.mapZoomRatio);
+  const mapZoomRatio = useAppSelector((state) => state.ui.mapZoomRatio);
 
   // 軍選択モード 又は 分割モード時はマップのドラッグを無効化
   const isMapDragDisabled =
@@ -182,16 +197,7 @@ export const BattleMap = () => {
 
     window.addEventListener("mouseup", handleGlobalMouseUp);
     return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
-  }, [
-    armyFormationMode,
-    selectionDragStart,
-    selectionDragCurrent,
-    selectedTiles,
-    placedTroops,
-    splittingArmyId,
-    armies,
-    dispatch,
-  ]);
+  }, [armyFormationMode, selectionDragStart, selectionDragCurrent, selectedTiles, placedTroops, splittingArmyId, armies, dispatch]);
 
   return (
     <div
@@ -262,4 +268,4 @@ export const BattleMap = () => {
       <PlacementConstraints />
     </div>
   );
-};
+});

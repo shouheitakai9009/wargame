@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AppDispatch } from "@/states";
-import { closeContextMenu } from "@/states/slice";
+import { closeContextMenu } from "@/states/modules/ui";
 
 type UseMenuVisibilityParams = {
   isOpen: boolean;
@@ -34,13 +34,6 @@ export function useMenuVisibility({
     window.addEventListener("scroll", handleScroll, true);
     return () => window.removeEventListener("scroll", handleScroll, true);
   }, [dispatch]);
-
-  // コンテキストメニューが開いたときにサブメニューの状態をリセット
-  useEffect(() => {
-    if (isOpen) {
-      setDirectionSubMenuOpen(false);
-    }
-  }, [isOpen]);
 
   return { directionSubMenuOpen, setDirectionSubMenuOpen };
 }

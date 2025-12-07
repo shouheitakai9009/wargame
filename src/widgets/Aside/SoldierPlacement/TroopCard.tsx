@@ -5,7 +5,7 @@ import { Swords, ShieldCheck, Crosshair, Zap } from "lucide-react";
 import type { SoldierType } from "@/states/soldier";
 import { useDrag } from "@react-aria/dnd";
 import { useAppDispatch } from "@/states";
-import { beginTroopDrag, endTroopDrag } from "@/states/slice";
+import { beginTroopDrag, endTroopDrag } from "@/states/modules/army";
 
 type Props = {
   type: SoldierType;

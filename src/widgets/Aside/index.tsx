@@ -1,15 +1,15 @@
-import { useAppSelector, useAppDispatch } from "../../states";
-import { switchPreparationTab, toggleLeftSidebar } from "../../states/slice";
-import { BATTLE_PHASE, PREPARATION_TAB } from "../../states/battle";
+import { useAppDispatch, useAppSelector } from "@/states";
+import { toggleLeftSidebar, switchPreparationTab } from "@/states/modules/ui";
+import { BATTLE_PHASE, PREPARATION_TAB } from "@/states/battle";
 import { SoldierPlacement } from "./SoldierPlacement";
 import { ArmyPlacement } from "./ArmyPlacement";
-import { Sidebar } from "../../designs/Sidebar";
+import { Sidebar } from "@/designs/Sidebar";
 
 export function Aside() {
   const dispatch = useAppDispatch();
-  const { phase, preparationTab, isLeftSidebarOpen } = useAppSelector(
-    (state) => state.app
-  );
+  const isOpen = useAppSelector((state) => state.ui.isLeftSidebarOpen);
+  const activeTab = useAppSelector((state) => state.ui.preparationTab);
+  const phase = useAppSelector((state) => state.battle.phase);
 
   // バトル中は兵配置タブをdisabled
   const isSoldierTabDisabled = phase === BATTLE_PHASE.BATTLE;
@@ -26,11 +26,11 @@ export function Aside() {
   return (
     <Sidebar
       side="left"
-      isOpen={isLeftSidebarOpen}
+      isOpen={isOpen}
       onToggle={() => dispatch(toggleLeftSidebar())}
       width="w-64"
       tabs={tabs}
-      activeTabId={preparationTab}
+      activeTabId={activeTab}
       onTabChange={(tabId) =>
         dispatch(
           switchPreparationTab(
@@ -39,10 +39,11 @@ export function Aside() {
         )
       }
     >
-      {preparationTab === PREPARATION_TAB.DEPLOY_SOLDIER &&
+      {activeTab === PREPARATION_TAB.DEPLOY_SOLDIER &&
         !isSoldierTabDisabled && <SoldierPlacement />}
-      {(preparationTab === PREPARATION_TAB.FORM_ARMY ||
-        isSoldierTabDisabled) && <ArmyPlacement />}
+      {(activeTab === PREPARATION_TAB.FORM_ARMY || isSoldierTabDisabled) && (
+        <ArmyPlacement />
+      )}
     </Sidebar>
   );
 }

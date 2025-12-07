@@ -1,72 +1,66 @@
-import { Link } from "react-router-dom";
-import { useAppSelector, useAppDispatch } from "../../states";
-import { startBattle, nextTurn, finishBattle } from "../../states/slice";
-import { BATTLE_PHASE } from "../../states/battle";
+import {
+  startBattle,
+  finishBattle,
+  nextTurn,
+  endBattle,
+} from "@/states/modules/battle";
+import { useAppDispatch, useAppSelector } from "@/states";
+import { BATTLE_PHASE } from "@/states/battle";
 import { Button } from "@/designs/ui/button";
 
 export function Header() {
+  const phase = useAppSelector((state) => state.battle.phase);
+  const turn = useAppSelector((state) => state.battle.turn);
   const dispatch = useAppDispatch();
-  const { phase } = useAppSelector((state) => state.app);
 
   return (
-    <div
-      className="absolute w-full z-10 flex items-center justify-between p-4 overflow-hidden border border-white/10"
-      style={{
-        background:
-          "linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 51, 234, 0.08) 50%, rgba(236, 72, 153, 0.08) 100%)",
-        backdropFilter: "blur(12px)",
-        boxShadow:
-          "0 8px 32px 0 rgba(31, 38, 135, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)",
-      }}
-    >
-      {/* リキッドグラスの装飾レイヤー */}
-      <div
-        className="absolute inset-0 -z-10 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%)",
-          filter: "blur(40px)",
-        }}
-      />
+    <header className="flex h-16 items-center justify-between border-b px-6 bg-slate-900 border-slate-800">
+      <h1 className="text-xl font-bold bg-linear-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+        War Simulator
+      </h1>
 
-      {/* 上部のハイライト */}
-      <div
-        className="absolute top-0 left-0 right-0 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)",
-        }}
-      />
-
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/">← ホームに戻る</Link>
-        </Button>
-        <h1 className="text-lg font-bold">戦闘画面</h1>
-      </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {phase === BATTLE_PHASE.PREPARATION && (
-          <Button onClick={() => dispatch(startBattle())} size="sm">
-            バトル開始
+          <Button
+            onClick={() => dispatch(startBattle())}
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-500 font-bold px-8 shadow-lg shadow-blue-900/20"
+          >
+            開戦
           </Button>
         )}
 
         {phase === BATTLE_PHASE.BATTLE && (
-          <Button onClick={() => dispatch(nextTurn())} size="sm">
-            次ターン
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="text-lg font-bold text-slate-200">
+              Turn <span className="text-cyan-400 text-2xl ml-1">{turn}</span>
+            </div>
+            <Button
+              onClick={() => dispatch(nextTurn())}
+              variant="outline"
+              className="border-slate-700 hover:bg-slate-800"
+            >
+              ターン終了
+            </Button>
+            <Button
+              onClick={() => dispatch(endBattle())}
+              variant="destructive"
+              className="bg-red-900/50 hover:bg-red-900 border-red-900"
+            >
+              撤退
+            </Button>
+          </div>
         )}
 
         {phase === BATTLE_PHASE.RESULT && (
-          <Button
-            variant="destructive"
-            onClick={() => dispatch(finishBattle())}
-            size="sm"
-          >
-            バトルを終了する
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="text-lg font-bold text-yellow-400">バトル終了</div>
+            <Button onClick={() => dispatch(finishBattle())} variant="default">
+              準備画面へ
+            </Button>
+          </div>
         )}
       </div>
-    </div>
+    </header>
   );
 }

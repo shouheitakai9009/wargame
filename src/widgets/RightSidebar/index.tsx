@@ -1,5 +1,5 @@
 import { useAppSelector, useAppDispatch } from "../../states";
-import { switchRightSidebarTab, toggleRightSidebar } from "../../states/slice";
+import { switchRightSidebarTab, toggleRightSidebar } from "@/states/modules/ui";
 import { RIGHT_SIDEBAR_TAB } from "../../states/battle";
 import { BattleLog } from "../BattleLog";
 import { RuleExplanation } from "../RuleExplanation";
@@ -8,7 +8,7 @@ import { Sidebar } from "../../designs/Sidebar";
 export function RightSidebar() {
   const dispatch = useAppDispatch();
   const { rightSidebarTab, isRightSidebarOpen } = useAppSelector(
-    (state) => state.app
+    (state) => state.ui
   );
 
   const tabs = [

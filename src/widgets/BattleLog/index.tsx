@@ -2,7 +2,7 @@ import { useAppSelector } from "../../states";
 import { BATTLE_PHASE } from "../../states/battle";
 
 export function BattleLog() {
-  const { phase, turn } = useAppSelector((state) => state.app);
+  const { phase, turn } = useAppSelector((state) => state.battle);
 
   return (
     <div>

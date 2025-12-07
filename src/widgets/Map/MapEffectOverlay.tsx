@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAppSelector, useAppDispatch } from "@/states";
-import { clearMapEffect } from "@/states/slice";
+import { clearMapEffect } from "@/states/modules/map";
 import { MAP_EFFECT } from "@/states/battle";
 import type { MapEffect } from "@/states/battle";
 
@@ -10,7 +10,7 @@ import type { MapEffect } from "@/states/battle";
  */
 export const MapEffectOverlay = () => {
   const dispatch = useAppDispatch();
-  const mapEffect = useAppSelector((state) => state.app.mapEffect);
+  const mapEffect = useAppSelector((state) => state.map.mapEffect);
 
   // エフェクト発火時に一定時間後に自動クリア
   useEffect(() => {

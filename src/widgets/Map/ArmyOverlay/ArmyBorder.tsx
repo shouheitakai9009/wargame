@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { useAppDispatch } from "@/states";
-import { openArmyPopover } from "@/states/slice";
+import { openArmyPopover } from "@/states/modules/ui";
 import { TILE_SIZE } from "@/states/map";
 import {
   ArrowUp,

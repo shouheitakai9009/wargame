@@ -1,12 +1,12 @@
 import { memo, useCallback, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/states";
 import { shallowEqual } from "react-redux";
+import { openContextMenu } from "@/states/modules/ui";
 import {
   beginSelectionDrag,
-  updateSelectionDrag,
   moveArmyToTile,
-  openContextMenu,
-} from "@/states/slice";
+  updateSelectionDrag,
+} from "@/states/modules/army";
 import { ARMY_FORMATION_MODE, BATTLE_MOVE_MODE } from "@/states/battle";
 import { TERRAIN_COLORS } from "../../../designs/colors";
 import { TERRAIN_TYPE, type Terrain } from "../../../states/terrain";
@@ -48,13 +48,13 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     movableTiles,
   } = useAppSelector(
     (state) => ({
-      placedTroops: state.app.placedTroops,
-      isDraggingTroop: state.app.isDraggingTroop,
-      armyFormationMode: state.app.armyFormationMode,
-      selectionDragStart: state.app.selectionDragStart,
-      battleMoveMode: state.app.battleMoveMode,
-      movingArmyId: state.app.movingArmyId,
-      movableTiles: state.app.movableTiles,
+      placedTroops: state.army.placedTroops,
+      isDraggingTroop: state.army.isDraggingTroop,
+      armyFormationMode: state.army.armyFormationMode,
+      selectionDragStart: state.army.selectionDragStart,
+      battleMoveMode: state.battle.battleMoveMode,
+      movingArmyId: state.battle.movingArmyId,
+      movableTiles: state.battle.movableTiles,
     }),
     shallowEqual
   );
