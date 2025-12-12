@@ -9,6 +9,7 @@ import {
 import type { PlacedTroop } from "@/lib/placement";
 import { ARMY_FORMATION_MODE, type ArmyFormationMode } from "../battle";
 import { initialArmies, initialPlacedTroops } from "@/data/initialPlacement";
+import { enemyArmies, enemyPlacedTroops } from "@/data/enemyPlacement";
 
 export type ArmyState = {
   placedTroops: PlacedTroop[];
@@ -243,6 +244,13 @@ export const armySlice = createSlice({
         return troop;
       });
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase("battle/startBattle", (state) => {
+      // バトル開始時に敵軍を追加
+      state.armies.push(...enemyArmies);
+      state.placedTroops.push(...enemyPlacedTroops);
+    });
   },
 });
 
