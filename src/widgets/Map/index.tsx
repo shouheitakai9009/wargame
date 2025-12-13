@@ -6,8 +6,7 @@ import {
   type MouseEvent,
   memo,
 } from "react";
-import { Tile } from "./Tile";
-import { initialMap } from "../../data/initialMap";
+import { TileGrid } from "./TileGrid";
 import { MAP_SIZE, TILE_SIZE } from "@/states/map";
 import { PlacementConstraints } from "./PlacementConstraints";
 import { useAppSelector, useAppDispatch } from "@/states";
@@ -240,22 +239,7 @@ export const Map = memo(function Map() {
         }}
       >
         {/* タイルグリッド */}
-        <div className="grid grid-cols-[repeat(30,50px)]">
-          {initialMap.map((terrain, i) => {
-            const x = i % MAP_SIZE;
-            const y = Math.floor(i / MAP_SIZE);
-            const isSelected = selectedTiles.has(`${x},${y}`);
-            return (
-              <Tile
-                key={`${x}-${y}`}
-                x={x}
-                y={y}
-                terrain={terrain}
-                isSelected={isSelected}
-              />
-            );
-          })}
-        </div>
+        <TileGrid selectedTiles={selectedTiles} />
         {/* 軍のオーバーレイ */}
         <ArmyOverlay />
         <ArmyPopover />
