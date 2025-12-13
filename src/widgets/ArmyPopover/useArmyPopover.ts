@@ -9,7 +9,7 @@ export function useArmyPopover() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.isArmyPopoverOpen);
   const editingArmy = useAppSelector((state) => state.ui.editingArmy);
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const placedTroops = useAppSelector((state) => state.army.playerTroops);
 
   const [localName, setLocalName] = useState(editingArmy?.name ?? "");
 

@@ -2,6 +2,7 @@ import { MAP_SIZE } from "@/states/map";
 import type { SoldierType } from "@/states/soldier";
 
 export type PlacedTroop = {
+  id: string; // 兵の一意なID
   x: number;
   y: number;
   type: SoldierType;

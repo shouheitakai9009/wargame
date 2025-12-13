@@ -9,17 +9,15 @@ import type { Army } from "@/states/army";
  * memo化により、armies/placedTroopsに変更がない限り再レンダリングされない
  */
 export const ArmyOverlay = memo(function ArmyOverlay() {
-  const armies = useAppSelector((state) => state.army.armies);
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const { playerTroops, enemyTroops, armies } = useAppSelector(
+    (state) => state.army
+  );
 
   // 全ての兵の位置をSetに変換（メモ化）
-  const allTroopsSet = useMemo(
-    () =>
-      new Set(
-        placedTroops.map((troop: PlacedTroop) => `${troop.x},${troop.y}`)
-      ),
-    [placedTroops]
-  );
+  const allTroopsSet = useMemo(() => {
+    const troops = [...playerTroops, ...enemyTroops];
+    return new Set(troops.map((troop: PlacedTroop) => `${troop.x},${troop.y}`));
+  }, [playerTroops, enemyTroops]);
 
   // 各軍ごとに兵をフィルタリング（メモ化）
   const armiesWithTroops = useMemo(() => {
@@ -32,7 +30,8 @@ export const ArmyOverlay = memo(function ArmyOverlay() {
       );
 
       // 実際に兵が配置されているマスのみをフィルタリング
-      const troopsInArmy = placedTroops.filter((troop: PlacedTroop) =>
+      const troops = [...playerTroops, ...enemyTroops];
+      const troopsInArmy = troops.filter((troop: PlacedTroop) =>
         armyPositionsSet.has(`${troop.x},${troop.y}`)
       );
 
@@ -41,7 +40,7 @@ export const ArmyOverlay = memo(function ArmyOverlay() {
         troopsInArmy,
       };
     });
-  }, [armies, placedTroops]);
+  }, [armies, playerTroops, enemyTroops]);
 
   if (armies.length === 0) return null;
 

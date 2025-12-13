@@ -25,7 +25,8 @@ export function useTileDrop({
   isPlacementZone,
 }: UseTileDropParams) {
   const dispatch = useAppDispatch();
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const { playerTroops, enemyTroops } = useAppSelector((state) => state.army);
+  const placedTroops = playerTroops; // 既存のコードとの互換性のため
   const ref = useRef<HTMLDivElement>(null);
 
   const { dropProps, isDropTarget } = useDrop({
@@ -46,7 +47,9 @@ export function useTileDrop({
           };
 
           // Validate placement
-          if (isPositionOccupied(x, y, placedTroops)) {
+          // 自軍と敵軍の両方チェック
+          const allTroops = [...playerTroops, ...enemyTroops];
+          if (isPositionOccupied(x, y, allTroops)) {
             dispatch(showError("既に配置されています"));
             return;
           }
@@ -81,8 +84,10 @@ export function useTileDrop({
           }
 
           // Place troop
+          // Place troop
           dispatch(
             placeTroop({
+              id: crypto.randomUUID(), // 一意なIDを生成
               x,
               y,
               type: data.type,

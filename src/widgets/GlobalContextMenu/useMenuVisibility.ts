@@ -3,14 +3,10 @@ import type { AppDispatch } from "@/states";
 import { closeContextMenu } from "@/states/modules/ui";
 
 type UseMenuVisibilityParams = {
-  isOpen: boolean;
   dispatch: AppDispatch;
 };
 
-export function useMenuVisibility({
-  isOpen,
-  dispatch,
-}: UseMenuVisibilityParams) {
+export function useMenuVisibility({ dispatch }: UseMenuVisibilityParams) {
   const [directionSubMenuOpen, setDirectionSubMenuOpen] = useState(false);
 
   // ESCキーでメニューを閉じる

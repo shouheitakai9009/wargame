@@ -39,7 +39,11 @@ function MenuContent({
 }) {
   const dispatch = useAppDispatch();
   const armies = useAppSelector((state) => state.army.armies);
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const { playerTroops, enemyTroops } = useAppSelector((state) => state.army);
+  const placedTroops = useMemo(
+    () => [...playerTroops, ...enemyTroops],
+    [playerTroops, enemyTroops]
+  );
   const phase = useAppSelector((state) => state.battle.phase);
   const armyFormationMode = useAppSelector(
     (state) => state.army.armyFormationMode
@@ -47,7 +51,6 @@ function MenuContent({
   const battleMoveMode = useAppSelector((state) => state.battle.battleMoveMode);
 
   const { directionSubMenuOpen, setDirectionSubMenuOpen } = useMenuVisibility({
-    isOpen: true,
     dispatch,
   });
 

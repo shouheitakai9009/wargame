@@ -38,47 +38,45 @@ export async function testGeminiAuthentication(): Promise<void> {
 
   try {
     // Gemini API generateContentエンドポイントへのリクエスト
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
-      {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: "Hello",
-                },
-              ],
-            },
-          ],
-        }),
-      }
-    );
-
-    // レスポンスの処理
-    if (response.ok) {
-      const data = await response.json();
-      console.log("✅ Gemini API Authentication: Success");
-      console.log("📝 Response:", data);
-
-      // Gemini APIのレスポンス構造に合わせて内容を表示
-      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-        console.log(
-          "💬 Generated text:",
-          data.candidates[0].content.parts[0].text
-        );
-      }
-    } else {
-      const errorData = await response.json();
-      console.error("❌ Gemini API Authentication: Failed");
-      console.error("Status:", response.status, response.statusText);
-      console.error("Error:", errorData);
-    }
+    // const response = await fetch(
+    //   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
+    //   {
+    //     method: "POST",
+    //     headers: {
+    //       "x-goog-api-key": apiKey,
+    //       "Content-Type": "application/json",
+    //     },
+    //     body: JSON.stringify({
+    //       contents: [
+    //         {
+    //           parts: [
+    //             {
+    //               text: "Hello",
+    //             },
+    //           ],
+    //         },
+    //       ],
+    //     }),
+    //   }
+    // );
+    // // レスポンスの処理
+    // if (response.ok) {
+    //   const data = await response.json();
+    //   console.log("✅ Gemini API Authentication: Success");
+    //   console.log("📝 Response:", data);
+    //   // Gemini APIのレスポンス構造に合わせて内容を表示
+    //   if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+    //     console.log(
+    //       "💬 Generated text:",
+    //       data.candidates[0].content.parts[0].text
+    //     );
+    //   }
+    // } else {
+    //   const errorData = await response.json();
+    //   console.error("❌ Gemini API Authentication: Failed");
+    //   console.error("Status:", response.status, response.statusText);
+    //   console.error("Error:", errorData);
+    // }
   } catch (error) {
     console.error("❌ Gemini API Authentication: Network Error");
     console.error("Error:", error);

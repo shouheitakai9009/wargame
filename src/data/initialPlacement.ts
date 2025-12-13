@@ -3,9 +3,15 @@ import { SOLDIER_STATS, type SoldierType } from "../states/soldier";
 import type { PlacedTroop } from "../lib/placement";
 
 // ヘルパー関数：兵を作成
-const createTroop = (x: number, y: number, type: SoldierType): PlacedTroop => {
+const createTroop = (
+  id: string,
+  x: number,
+  y: number,
+  type: SoldierType
+): PlacedTroop => {
   const stats = SOLDIER_STATS[type];
   return {
+    id,
     x,
     y,
     type,
@@ -17,15 +23,15 @@ const createTroop = (x: number, y: number, type: SoldierType): PlacedTroop => {
 // 1. 秦国左翼 (Qin Left Wing)
 const leftWingTroops: PlacedTroop[] = [
   // 左列
-  createTroop(8, 20, "CAVALRY"),
-  createTroop(8, 21, "CAVALRY"),
-  createTroop(8, 22, "CAVALRY"),
-  createTroop(8, 23, "CAVALRY"),
+  createTroop("player-left-1", 8, 20, "CAVALRY"),
+  createTroop("player-left-2", 8, 21, "CAVALRY"),
+  createTroop("player-left-3", 8, 22, "CAVALRY"),
+  createTroop("player-left-4", 8, 23, "CAVALRY"),
   // 右列
-  createTroop(9, 20, "CAVALRY"),
-  createTroop(9, 21, "CAVALRY"),
-  createTroop(9, 22, "CAVALRY"),
-  createTroop(9, 23, "CAVALRY"),
+  createTroop("player-left-5", 9, 20, "CAVALRY"),
+  createTroop("player-left-6", 9, 21, "CAVALRY"),
+  createTroop("player-left-7", 9, 22, "CAVALRY"),
+  createTroop("player-left-8", 9, 23, "CAVALRY"),
 ];
 
 const leftWingArmy: Army = {
@@ -39,11 +45,11 @@ const leftWingArmy: Army = {
 
 // 2. 秦国特攻軍 (Qin Special Attack Force)
 const specialForceTroops: PlacedTroop[] = [
-  createTroop(15, 20, "INFANTRY"),
-  createTroop(15, 21, "INFANTRY"),
-  createTroop(15, 22, "INFANTRY"),
-  createTroop(15, 23, "ARCHER"),
-  createTroop(15, 24, "ARCHER"),
+  createTroop("player-special-1", 15, 20, "INFANTRY"),
+  createTroop("player-special-2", 15, 21, "INFANTRY"),
+  createTroop("player-special-3", 15, 22, "INFANTRY"),
+  createTroop("player-special-4", 15, 23, "ARCHER"),
+  createTroop("player-special-5", 15, 24, "ARCHER"),
 ];
 
 const specialForceArmy: Army = {
@@ -58,17 +64,17 @@ const specialForceArmy: Army = {
 // 3. 秦国中央軍 (Qin Central Army)
 const centralArmyTroops: PlacedTroop[] = [
   // 上段
-  createTroop(20, 25, "SHIELD"),
-  createTroop(21, 25, "SHIELD"),
-  createTroop(22, 25, "SHIELD"),
+  createTroop("player-central-1", 20, 25, "SHIELD"),
+  createTroop("player-central-2", 21, 25, "SHIELD"),
+  createTroop("player-central-3", 22, 25, "SHIELD"),
   // 中段
-  createTroop(20, 26, "SHIELD"),
-  createTroop(21, 26, "GENERAL"), // 将軍
-  createTroop(22, 26, "SHIELD"),
+  createTroop("player-central-4", 20, 26, "SHIELD"),
+  createTroop("player-central-5", 21, 26, "GENERAL"), // 将軍
+  createTroop("player-central-6", 22, 26, "SHIELD"),
   // 下段
-  createTroop(20, 27, "SHIELD"),
-  createTroop(21, 27, "SHIELD"),
-  createTroop(22, 27, "SHIELD"),
+  createTroop("player-central-7", 20, 27, "SHIELD"),
+  createTroop("player-central-8", 21, 27, "SHIELD"),
+  createTroop("player-central-9", 22, 27, "SHIELD"),
 ];
 
 const centralArmy: Army = {
@@ -83,15 +89,15 @@ const centralArmy: Army = {
 // 4. 秦国右翼 (Qin Right Wing)
 const rightWingTroops: PlacedTroop[] = [
   // 左列
-  createTroop(26, 20, "CAVALRY"),
-  createTroop(26, 21, "INFANTRY"),
-  createTroop(26, 22, "ARCHER"),
-  createTroop(26, 23, "ARCHER"),
+  createTroop("player-right-1", 26, 20, "CAVALRY"),
+  createTroop("player-right-2", 26, 21, "INFANTRY"),
+  createTroop("player-right-3", 26, 22, "ARCHER"),
+  createTroop("player-right-4", 26, 23, "ARCHER"),
   // 右列
-  createTroop(27, 20, "CAVALRY"),
-  createTroop(27, 21, "INFANTRY"),
-  createTroop(27, 22, "ARCHER"),
-  createTroop(27, 23, "ARCHER"),
+  createTroop("player-right-5", 27, 20, "CAVALRY"),
+  createTroop("player-right-6", 27, 21, "INFANTRY"),
+  createTroop("player-right-7", 27, 22, "ARCHER"),
+  createTroop("player-right-8", 27, 23, "ARCHER"),
 ];
 
 const rightWingArmy: Army = {

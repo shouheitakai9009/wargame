@@ -8,17 +8,18 @@ import { showError } from "@/states/modules/ui";
 import { useAppDispatch, useAppSelector } from "@/states";
 import { BATTLE_PHASE } from "@/states/battle";
 import { Button } from "@/designs/ui/button";
+import { recalculateAllVisionsThunk } from "@/states/modules/visibility";
 
 export function Header() {
   const phase = useAppSelector((state) => state.battle.phase);
   const turn = useAppSelector((state) => state.battle.turn);
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const playerTroops = useAppSelector((state) => state.army.playerTroops);
   const armies = useAppSelector((state) => state.army.armies);
   const dispatch = useAppDispatch();
 
   const handleStartBattle = () => {
     // バリデーション: 全ての兵が軍に所属しているかチェック
-    const unassignedTroop = placedTroops.find(
+    const unassignedTroop = playerTroops.find(
       (troop) =>
         !armies.some((army) =>
           army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
@@ -36,6 +37,8 @@ export function Header() {
     }
 
     dispatch(startBattle());
+    // バトル開始時に全兵の視界を初期化
+    dispatch(recalculateAllVisionsThunk());
   };
 
   return (

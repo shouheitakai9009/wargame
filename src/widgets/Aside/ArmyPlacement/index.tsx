@@ -11,7 +11,7 @@ import { Shield } from "lucide-react";
 
 // 軍カードコンポーネント
 function ArmyCard({ army }: { army: Army }) {
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const placedTroops = useAppSelector((state) => state.army.playerTroops);
 
   // 軍の色を取得
   const armyColor = ARMY_COLORS[army.color as unknown as ArmyColorKey];

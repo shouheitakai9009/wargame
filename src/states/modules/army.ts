@@ -12,7 +12,8 @@ import { initialArmies, initialPlacedTroops } from "@/data/initialPlacement";
 import { enemyArmies, enemyPlacedTroops } from "@/data/enemyPlacement";
 
 export type ArmyState = {
-  placedTroops: PlacedTroop[];
+  playerTroops: PlacedTroop[]; // プレイヤーの兵
+  enemyTroops: PlacedTroop[]; // 敵の兵
   isDraggingTroop: boolean;
   armyFormationMode: ArmyFormationMode;
   splittingArmyId: string | null;
@@ -22,7 +23,8 @@ export type ArmyState = {
 };
 
 export const initialArmyState: ArmyState = {
-  placedTroops: initialPlacedTroops,
+  playerTroops: initialPlacedTroops,
+  enemyTroops: [],
   isDraggingTroop: false,
   armyFormationMode: ARMY_FORMATION_MODE.NONE,
   splittingArmyId: null,
@@ -36,10 +38,10 @@ export const armySlice = createSlice({
   initialState: initialArmyState,
   reducers: {
     placeTroop: (state, action: PayloadAction<PlacedTroop>) => {
-      state.placedTroops.push(action.payload);
+      state.playerTroops.push(action.payload);
     },
     removeTroop: (state, action: PayloadAction<{ x: number; y: number }>) => {
-      state.placedTroops = state.placedTroops.filter(
+      state.playerTroops = state.playerTroops.filter(
         (troop) => troop.x !== action.payload.x || troop.y !== action.payload.y
       );
     },
@@ -196,7 +198,10 @@ export const armySlice = createSlice({
         direction: moveDirection,
         offsetX,
         offsetY,
-      } = calculateMoveDirection(army, targetX, targetY, state.placedTroops);
+      } = calculateMoveDirection(army, targetX, targetY, [
+        ...state.playerTroops,
+        ...state.enemyTroops,
+      ]);
 
       if (!moveDirection) return;
 
@@ -228,12 +233,23 @@ export const armySlice = createSlice({
         direction: newDirection,
       };
 
-      // PlacedTroops更新
+      // PlacedTroops更新（playerTroopsとenemyTroopsの両方）
       const armyPositionsSet = new Set(
         army.positions.map((pos) => `${pos.x},${pos.y}`)
       );
 
-      state.placedTroops = state.placedTroops.map((troop) => {
+      state.playerTroops = state.playerTroops.map((troop) => {
+        if (armyPositionsSet.has(`${troop.x},${troop.y}`)) {
+          return {
+            ...troop,
+            x: troop.x + offsetX,
+            y: troop.y + offsetY,
+          };
+        }
+        return troop;
+      });
+
+      state.enemyTroops = state.enemyTroops.map((troop) => {
         if (armyPositionsSet.has(`${troop.x},${troop.y}`)) {
           return {
             ...troop,
@@ -249,7 +265,7 @@ export const armySlice = createSlice({
     builder.addCase("battle/startBattle", (state) => {
       // バトル開始時に敵軍を追加
       state.armies.push(...enemyArmies);
-      state.placedTroops.push(...enemyPlacedTroops);
+      state.enemyTroops.push(...enemyPlacedTroops);
     });
   },
 });

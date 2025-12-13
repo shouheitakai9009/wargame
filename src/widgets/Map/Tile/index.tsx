@@ -9,11 +9,13 @@ import {
 } from "@/states/modules/army";
 import { resetBattleMoveMode } from "@/states/modules/battle";
 import { triggerMapEffect } from "@/states/modules/map";
+import { recalculateAllVisionsThunk } from "@/states/modules/visibility";
 import { calculateMoveDirection } from "@/lib/armyMovement";
 import {
   ARMY_FORMATION_MODE,
   BATTLE_MOVE_MODE,
   MAP_EFFECT,
+  BATTLE_PHASE,
 } from "@/states/battle";
 import { TERRAIN_COLORS } from "../../../designs/colors";
 import { TERRAIN_TYPE, type Terrain } from "../../../states/terrain";
@@ -46,7 +48,8 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
   const dispatch = useAppDispatch();
 
   const {
-    placedTroops,
+    playerTroops,
+    enemyTroops,
     isDraggingTroop,
     armyFormationMode,
     selectionDragStart,
@@ -54,9 +57,12 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     movingArmyId,
     movableTiles,
     armies,
+    troopVisions,
+    phase,
   } = useAppSelector(
     (state) => ({
-      placedTroops: state.army.placedTroops,
+      playerTroops: state.army.playerTroops,
+      enemyTroops: state.army.enemyTroops,
       isDraggingTroop: state.army.isDraggingTroop,
       armyFormationMode: state.army.armyFormationMode,
       selectionDragStart: state.army.selectionDragStart,
@@ -64,15 +70,33 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
       movingArmyId: state.battle.movingArmyId,
       movableTiles: state.battle.movableTiles,
       armies: state.army.armies,
+      troopVisions: state.visibility.troopVisions,
+      phase: state.battle.phase,
     }),
     shallowEqual
   );
 
   // 重い計算をメモ化
-  const troopOnTile = useMemo(
-    () => placedTroops.find((t) => t.x === x && t.y === y),
-    [placedTroops, x, y]
+  const allTroops = useMemo(
+    () => [...playerTroops, ...enemyTroops],
+    [playerTroops, enemyTroops]
   );
+
+  const troopOnTile = useMemo(
+    () => allTroops.find((t) => t.x === x && t.y === y),
+    [allTroops, x, y]
+  );
+
+  // 自軍のいずれかの兵から見えるタイルかチェック
+  const isVisible = useMemo(() => {
+    // 準備フェーズは全て見える
+    if (phase === BATTLE_PHASE.PREPARATION) return true;
+
+    return playerTroops.some((troop) => {
+      const vision = troopVisions[troop.id];
+      return vision?.visibleTiles.includes(`${x},${y}`);
+    });
+  }, [playerTroops, troopVisions, x, y, phase]);
 
   const isPlacementZone = useMemo(() => isValidPlacementZone(x, y), [x, y]);
 
@@ -122,6 +146,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     isDropTarget,
     isDraggingTroop,
     armyFormationMode,
+    isVisible,
   });
 
   const TroopIcon = troopOnTile ? TROOP_ICON_MAP[troopOnTile.type] : null;
@@ -175,7 +200,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
           movingArmy,
           x,
           y,
-          placedTroops
+          allTroops
         );
 
         if (direction) {
@@ -195,6 +220,8 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
       dispatch(
         moveArmyToTile({ armyId: movingArmyId, targetX: x, targetY: y })
       );
+      // 移動完了後に視界を再計算
+      dispatch(recalculateAllVisionsThunk());
       dispatch(resetBattleMoveMode());
     }
   }, [
@@ -205,7 +232,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     x,
     y,
     armies,
-    placedTroops,
+    allTroops,
   ]);
 
   const handleContextMenuOpen = useCallback(
@@ -240,7 +267,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
       data-x={x}
       data-y={y}
     >
-      {TroopIcon && troopOnTile && (
+      {TroopIcon && troopOnTile && isVisible && (
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
           style={{

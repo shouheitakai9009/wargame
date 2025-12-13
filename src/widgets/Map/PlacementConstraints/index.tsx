@@ -5,7 +5,7 @@ import { BATTLE_PHASE } from "@/states/battle";
 import type { PlacedTroop } from "@/lib/placement";
 
 export function PlacementConstraints() {
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const placedTroops = useAppSelector((state) => state.army.playerTroops);
   const armies = useAppSelector((state) => state.army.armies);
   const phase = useAppSelector((state) => state.battle.phase);
 

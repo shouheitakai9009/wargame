@@ -39,7 +39,11 @@ export const Map = memo(function Map() {
   const selectionDragCurrent = useAppSelector(
     (state) => state.army.selectionDragCurrent
   );
-  const placedTroops = useAppSelector((state) => state.army.placedTroops);
+  const { playerTroops, enemyTroops } = useAppSelector((state) => state.army);
+  const placedTroops = useMemo(
+    () => [...playerTroops, ...enemyTroops],
+    [playerTroops, enemyTroops]
+  );
   const armies = useAppSelector((state) => state.army.armies);
   const splittingArmyId = useAppSelector((state) => state.army.splittingArmyId);
 

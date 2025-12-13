@@ -9,6 +9,7 @@ type UseTileStylesParams = {
   isDropTarget: boolean;
   isDraggingTroop: boolean;
   armyFormationMode: string;
+  isVisible: boolean; // 視界内かどうか
 };
 
 export function useTileStyles({
@@ -19,11 +20,15 @@ export function useTileStyles({
   isDropTarget,
   isDraggingTroop,
   armyFormationMode,
+  isVisible,
 }: UseTileStylesParams): CSSProperties {
   return useMemo(() => {
     // フィルター計算
     let filter: string | undefined;
-    if (isMovableTile) {
+    if (!isVisible) {
+      // 視界外の場合は暗くする
+      filter = "brightness(0.5)";
+    } else if (isMovableTile) {
       filter = "brightness(1.4)";
     } else if (isPlacementZone && isDropTarget) {
       filter = "brightness(1.5)";
@@ -83,6 +88,7 @@ export function useTileStyles({
       boxShadow,
       cursor,
       userSelect,
+      opacity: isVisible ? 1 : 0.8, // 視界外の場合は少し半透明
     };
   }, [
     backgroundColor,
@@ -92,5 +98,6 @@ export function useTileStyles({
     isDropTarget,
     isDraggingTroop,
     armyFormationMode,
+    isVisible,
   ]);
 }

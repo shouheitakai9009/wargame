@@ -37,6 +37,7 @@ export type UiState = {
     subText?: string;
   } | null;
   contextMenu: ContextMenuState;
+  isVisibilityModeEnabled: boolean;
 };
 
 export const initialUiState: UiState = {
@@ -50,6 +51,7 @@ export const initialUiState: UiState = {
   isLeftSidebarOpen: true,
   battleAnnouncement: null,
   contextMenu: null,
+  isVisibilityModeEnabled: false,
 };
 
 export const uiSlice = createSlice({
@@ -158,6 +160,9 @@ export const uiSlice = createSlice({
     closeContextMenu: (state) => {
       state.contextMenu = null;
     },
+    toggleVisibilityMode: (state) => {
+      state.isVisibilityModeEnabled = !state.isVisibilityModeEnabled;
+    },
     // ConfirmArmyはArmySlice側で処理するが、UIも閉じる必要がある
   },
   extraReducers: (builder) => {
@@ -190,6 +195,7 @@ export const {
   clearBattleAnnouncement,
   openContextMenu,
   closeContextMenu,
+  toggleVisibilityMode,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

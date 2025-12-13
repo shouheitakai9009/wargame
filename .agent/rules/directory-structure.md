@@ -35,3 +35,4 @@ trigger: always_on
 - **`battle-rule.md`**: バトルルールの仕様書です。
 - **`coding-rule.md`**: コーディング規約です。
 - **`directory-structure.md`**: このファイルです。ディレクトリ構造のドキュメントです。
+- **`tech-stack.md`**:

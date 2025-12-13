@@ -17,6 +17,8 @@ export function getTerrainEffect(
   soldierType: SoldierType,
   terrain: Terrain
 ): TerrainEffect | null {
+  const currentSpeed = SOLDIER_STATS[soldierType].speed;
+
   switch (terrain.type) {
     case TERRAIN_TYPE.GRASS:
       // 草：特殊効果なし
@@ -25,7 +27,6 @@ export function getTerrainEffect(
     case TERRAIN_TYPE.WATER:
       // 水：全兵種が速さ1になり、攻撃、防御、射程が2ずつ下がる
       // 速度が1になる = 元の速度 - 1
-      const currentSpeed = SOLDIER_STATS[soldierType].speed;
       return {
         name: "水",
         description: "全身が水に浸かっている",
