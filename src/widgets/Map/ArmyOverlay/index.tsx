@@ -29,11 +29,18 @@ export const ArmyOverlay = memo(function ArmyOverlay() {
         )
       );
 
-      // 実際に兵が配置されているマスのみをフィルタリング
+      // 実際に兵が配置されているマスのみをフィルタリング（重複排除）
       const troops = [...playerTroops, ...enemyTroops];
-      const troopsInArmy = troops.filter((troop: PlacedTroop) =>
-        armyPositionsSet.has(`${troop.x},${troop.y}`)
-      );
+      const uniqueTroopsMap = new Map<string, PlacedTroop>();
+
+      troops.forEach((troop) => {
+        const key = `${troop.x},${troop.y}`;
+        if (armyPositionsSet.has(key) && !uniqueTroopsMap.has(key)) {
+          uniqueTroopsMap.set(key, troop);
+        }
+      });
+
+      const troopsInArmy = Array.from(uniqueTroopsMap.values());
 
       return {
         army,

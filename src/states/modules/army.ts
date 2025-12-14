@@ -263,9 +263,14 @@ export const armySlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase("battle/startBattle", (state) => {
-      // バトル開始時に敵軍を追加
-      state.armies.push(...enemyArmies);
-      state.enemyTroops.push(...enemyPlacedTroops);
+      // バトル開始時に敵軍を追加（未追加の場合のみ）
+      const hasEnemyArmies = state.armies.some(
+        (army) => army.id === enemyArmies[0].id
+      );
+      if (!hasEnemyArmies) {
+        state.armies.push(...enemyArmies);
+        state.enemyTroops.push(...enemyPlacedTroops);
+      }
     });
   },
 });

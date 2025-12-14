@@ -5,7 +5,7 @@ import { store } from "./states";
 import LandingPage from "./routes/LandingPage";
 import BattlePage from "./routes/BattlePage";
 import ErrorAlert from "./widgets/ErrorAlert";
-import "./App.css";
+import { GlobalTroopTooltip } from "./widgets/GlobalTroopTooltip";
 
 function App() {
   return (
@@ -18,6 +18,7 @@ function App() {
           </Routes>
         </BrowserRouter>
         <ErrorAlert />
+        <GlobalTroopTooltip />
       </TooltipProvider>
     </Provider>
   );

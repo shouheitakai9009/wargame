@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/states";
 import { shallowEqual } from "react-redux";
-import { openContextMenu } from "@/states/modules/ui";
+import { openContextMenu, setHoveredTroop } from "@/states/modules/ui";
 import {
   beginSelectionDrag,
   moveArmyToTile,
@@ -25,7 +25,6 @@ import type { SoldierType } from "@/states/soldier";
 import type { LucideIcon } from "lucide-react";
 import { Crown, Swords, Target, Shield, Flame } from "lucide-react";
 import { getTerrainEffect } from "@/lib/terrainEffect";
-import { TroopTooltip } from "./TroopTooltip";
 import { useTileDrop } from "./useTileDrop";
 import { useTileStyles } from "./useTileStyles";
 
@@ -177,6 +176,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
   );
 
   const handleMouseEnter = useCallback(() => {
+    // 範囲選択ドラッグ中
     if (
       (armyFormationMode === ARMY_FORMATION_MODE.SELECT ||
         armyFormationMode === ARMY_FORMATION_MODE.SPLIT) &&
@@ -184,7 +184,35 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     ) {
       dispatch(updateSelectionDrag({ x, y }));
     }
-  }, [armyFormationMode, selectionDragStart, dispatch, x, y]);
+
+    // 兵がいる場合はTooltipのホバー状態をセット
+    if (troopOnTile) {
+      // 要素の位置を取得
+      const rect = ref.current?.getBoundingClientRect();
+      if (rect) {
+        dispatch(
+          setHoveredTroop({
+            troopId: troopOnTile.id,
+            tileX: x,
+            tileY: y,
+            clientRect: {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+            },
+          })
+        );
+      }
+    }
+  }, [armyFormationMode, selectionDragStart, dispatch, x, y, troopOnTile, ref]);
+
+  const handleMouseLeave = useCallback(() => {
+    // ホバー状態を解除
+    if (troopOnTile) {
+      dispatch(setHoveredTroop(null));
+    }
+  }, [dispatch, troopOnTile]);
 
   const handleTileClick = useCallback(() => {
     // 移動モードで移動可能マスをクリックした場合
@@ -250,12 +278,13 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     [dispatch, x, y]
   );
 
-  const tileContent = (
+  return (
     <div
       ref={ref}
       {...dropProps}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onClick={handleTileClick}
       onContextMenu={handleContextMenuOpen}
       className="transition-all duration-200 relative flex items-center justify-center overflow-hidden"
@@ -279,20 +308,4 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
       )}
     </div>
   );
-
-  // 兵がいる場合はTooltipでラップ
-  if (troopOnTile && TroopIcon) {
-    return (
-      <TroopTooltip
-        troopOnTile={troopOnTile}
-        terrainEffect={terrainEffect}
-        TroopIcon={TroopIcon}
-      >
-        {tileContent}
-      </TroopTooltip>
-    );
-  }
-
-  // 兵がいない場合はそのまま返す
-  return tileContent;
 });

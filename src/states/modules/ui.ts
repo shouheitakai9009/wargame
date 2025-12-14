@@ -16,6 +16,13 @@ export type ContextMenuState = {
   tile: { x: number; y: number }; // マップ上のタイル座標
 } | null;
 
+export type HoveredTroopState = {
+  troopId: string;
+  tileX: number;
+  tileY: number;
+  clientRect: { top: number; left: number; width: number; height: number }; // 要素の位置情報
+} | null;
+
 export type UiState = {
   preparationTab: PreparationTab;
   rightSidebarTab: RightSidebarTab;
@@ -38,6 +45,7 @@ export type UiState = {
   } | null;
   contextMenu: ContextMenuState;
   isVisibilityModeEnabled: boolean;
+  hoveredTroop: HoveredTroopState;
 };
 
 export const initialUiState: UiState = {
@@ -52,6 +60,7 @@ export const initialUiState: UiState = {
   battleAnnouncement: null,
   contextMenu: null,
   isVisibilityModeEnabled: false,
+  hoveredTroop: null,
 };
 
 export const uiSlice = createSlice({
@@ -163,6 +172,11 @@ export const uiSlice = createSlice({
     toggleVisibilityMode: (state) => {
       state.isVisibilityModeEnabled = !state.isVisibilityModeEnabled;
     },
+    setHoveredTroop: (state, action: PayloadAction<HoveredTroopState>) => {
+      // 頻繁な更新を防ぐため、IDが変わった場合のみ更新（本来はReact側で制御すべきだが念のため）
+      // ただし、座標が変わる可能性もあるので、ここでは単純に上書きする
+      state.hoveredTroop = action.payload;
+    },
     // ConfirmArmyはArmySlice側で処理するが、UIも閉じる必要がある
   },
   extraReducers: (builder) => {
@@ -196,6 +210,7 @@ export const {
   openContextMenu,
   closeContextMenu,
   toggleVisibilityMode,
+  setHoveredTroop,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

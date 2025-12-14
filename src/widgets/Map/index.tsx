@@ -5,6 +5,7 @@ import {
   useEffect,
   type MouseEvent,
   memo,
+  useCallback,
 } from "react";
 import { TileGrid } from "./TileGrid";
 import { MAP_SIZE, TILE_SIZE } from "@/states/map";
@@ -26,9 +27,14 @@ import { MapEffectOverlay } from "./MapEffectOverlay";
 export const Map = memo(function Map() {
   const dispatch = useAppDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapContentRef = useRef<HTMLDivElement>(null);
+
+  // React Stateでの座標管理を廃止し、Refで管理
+  const positionRef = useRef({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
   const armyFormationMode = useAppSelector(
     (state) => state.army.armyFormationMode
   );
@@ -78,22 +84,43 @@ export const Map = memo(function Map() {
     return tiles;
   }, [selectionDragStart, selectionDragCurrent, armyFormationMode]);
 
+  // Transformを更新するヘルパー関数
+  // useCallbackでメモ化して依存関係エラーを解消
+  const updateTransform = useCallback(() => {
+    if (mapContentRef.current) {
+      const { x, y } = positionRef.current;
+      mapContentRef.current.style.transform = `translate(${x}px, ${y}px) scale(${mapZoomRatio})`;
+    }
+  }, [mapZoomRatio]);
+
+  // ズーム比率が変わった時にTransformを更新
+  useEffect(() => {
+    updateTransform();
+  }, [updateTransform]);
+
   const handleMouseDown = (e: MouseEvent) => {
     if (isMapDragDisabled) return;
     setIsDragging(true);
-    setDragStart({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    });
+
+    // ドラッグ開始時のオフセットを保存
+    dragStartRef.current = {
+      x: e.clientX - positionRef.current.x,
+      y: e.clientY - positionRef.current.y,
+    };
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging || isMapDragDisabled) return;
 
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
+    // 新しい座標を計算
+    const newX = e.clientX - dragStartRef.current.x;
+    const newY = e.clientY - dragStartRef.current.y;
 
-    setPosition({ x: newX, y: newY });
+    // Refを更新
+    positionRef.current = { x: newX, y: newY };
+
+    // DOMを直接更新（Reactのレンダリングをバイパス）
+    updateTransform();
   };
 
   const handleMouseUp = () => {
@@ -216,26 +243,16 @@ export const Map = memo(function Map() {
       <MapEffectOverlay />
 
       {/* サイバーグロウオーバーレイ - マップの前面 */}
-      <div
-        className="absolute inset-0 z-50"
-        style={{
-          pointerEvents: "none",
-          boxShadow: `
-            inset 0 0 60px rgba(59, 130, 246, 0.15),
-            inset 0 0 30px rgba(59, 130, 246, 0.1),
-            0 0 40px rgba(59, 130, 246, 0.2)
-          `,
-          border: "1px solid rgba(59, 130, 246, 0.3)",
-          animation: "cyber-grid-glow 3s ease-in-out infinite alternate",
-        }}
-      />
+
       <div
         className="absolute"
+        ref={mapContentRef}
         style={{
-          transform: `translate(${position.x}px, ${position.y}px)`,
+          // 初期位置
+          transform: "translate(0px, 0px) scale(1)",
           width: MAP_SIZE * TILE_SIZE,
           height: MAP_SIZE * TILE_SIZE,
-          scale: mapZoomRatio,
+          transformOrigin: "top left", // ズームの原点を左上に
         }}
       >
         {/* タイルグリッド */}

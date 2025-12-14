@@ -21,6 +21,7 @@ type Props = {
 /**
  * 単一の軍のボーダーとラベルを描画するコンポーネント
  * memo化により、この軍に関係する変更がない限り再レンダリングされない
+ * SVGを使用して描画負荷を低減
  */
 export const ArmyBorder = memo(function ArmyBorder({
   army,
@@ -43,7 +44,15 @@ export const ArmyBorder = memo(function ArmyBorder({
   // 軍の範囲の最小・最大座標を計算（メモ化）
   const bounds = useMemo(() => {
     if (troopsInArmy.length === 0) {
-      return { minX: 0, maxX: 0, minY: 0, maxY: 0, centerX: 0 };
+      return {
+        minX: 0,
+        maxX: 0,
+        minY: 0,
+        maxY: 0,
+        centerX: 0,
+        width: 0,
+        height: 0,
+      };
     }
 
     const minX = Math.min(...troopsInArmy.map((t) => t.x));
@@ -51,9 +60,50 @@ export const ArmyBorder = memo(function ArmyBorder({
     const minY = Math.min(...troopsInArmy.map((t) => t.y));
     const maxY = Math.max(...troopsInArmy.map((t) => t.y));
     const centerX = minX + (maxX - minX) / 2;
+    const width = (maxX - minX + 1) * TILE_SIZE;
+    const height = (maxY - minY + 1) * TILE_SIZE;
 
-    return { minX, maxX, minY, maxY, centerX };
+    return { minX, maxX, minY, maxY, centerX, width, height };
   }, [troopsInArmy]);
+
+  // ボーダーパスを生成する（メモ化）
+  const borderPath = useMemo(() => {
+    let path = "";
+    const { minX, minY } = bounds;
+
+    troopsInArmy.forEach((troop) => {
+      const { x, y } = troop;
+      // SVG内の相対座標
+      const relX = (x - minX) * TILE_SIZE;
+      const relY = (y - minY) * TILE_SIZE;
+
+      // 上下左右の隣接マスに兵がいるかチェック
+      const hasTop = hasTroopAt(x, y - 1);
+      const hasBottom = hasTroopAt(x, y + 1);
+      const hasLeft = hasTroopAt(x - 1, y);
+      const hasRight = hasTroopAt(x + 1, y);
+
+      // ボーダーを描画（各方向で隣接マスに兵がいない場合のみ）
+      if (!hasTop) {
+        path += `M${relX},${relY} L${relX + TILE_SIZE},${relY} `;
+      }
+      if (!hasBottom) {
+        path += `M${relX},${relY + TILE_SIZE} L${relX + TILE_SIZE},${
+          relY + TILE_SIZE
+        } `;
+      }
+      if (!hasLeft) {
+        path += `M${relX},${relY} L${relX},${relY + TILE_SIZE} `;
+      }
+      if (!hasRight) {
+        path += `M${relX + TILE_SIZE},${relY} L${relX + TILE_SIZE},${
+          relY + TILE_SIZE
+        } `;
+      }
+    });
+
+    return path;
+  }, [troopsInArmy, bounds, troopPositionsSet]); // troopPositionsSetは実質troopsInArmyに依存するのでdepsに含める際は注意が必要だが、ここでは関数内で使っているhasTroopAtが依存している
 
   // 最適なラベル位置を計算（メモ化）
   const labelPosition = useMemo(() => {
@@ -180,35 +230,41 @@ export const ArmyBorder = memo(function ArmyBorder({
   // 軍の色を取得
   const armyColor = ARMY_COLORS[army.color];
 
+  if (troopsInArmy.length === 0) return null;
+
   return (
-    <div>
-      {/* 兵が配置されているタイルごとにボーダーを描画 */}
-      {troopsInArmy.map((troop) => {
-        const { x, y } = troop;
-
-        // 上下左右の隣接マスに兵がいるかチェック
-        const hasTop = hasTroopAt(x, y - 1);
-        const hasBottom = hasTroopAt(x, y + 1);
-        const hasLeft = hasTroopAt(x - 1, y);
-        const hasRight = hasTroopAt(x + 1, y);
-
-        // ボーダーのスタイル（各方向で隣接マスに兵がいない場合のみボーダーを描画）
-        const borderStyle = {
-          position: "absolute" as const,
-          left: x * TILE_SIZE,
-          top: y * TILE_SIZE,
-          width: TILE_SIZE,
-          height: TILE_SIZE,
-          borderTop: !hasTop ? `3px solid ${armyColor.border}` : "none",
-          borderBottom: !hasBottom ? `3px solid ${armyColor.border}` : "none",
-          borderLeft: !hasLeft ? `3px solid ${armyColor.border}` : "none",
-          borderRight: !hasRight ? `3px solid ${armyColor.border}` : "none",
-          pointerEvents: "none" as const,
-          boxShadow: `0 0 12px ${armyColor.shadow}`,
-        };
-
-        return <div key={`${x},${y}`} style={borderStyle} />;
-      })}
+    <>
+      {/* SVGによるボーダー描画 */}
+      <div
+        style={{
+          position: "absolute",
+          left: bounds.minX * TILE_SIZE,
+          top: bounds.minY * TILE_SIZE,
+          width: bounds.width,
+          height: bounds.height,
+          pointerEvents: "none",
+          zIndex: 5, // タイルより上、兵より下（兵はz-index指定なしだがDOM順序で上に来るはずだが確認が必要）
+          // 影をつける（SVGのdrop-shadowフィルタを使う方が綺麗だが、ここでは簡易的にコンテナにつける）
+          // ただしpathのみに影をつけたいので、filter: drop-shadowを使う
+          filter: `drop-shadow(0 0 4px ${armyColor.shadow})`,
+        }}
+      >
+        <svg
+          width={bounds.width}
+          height={bounds.height}
+          viewBox={`0 0 ${bounds.width} ${bounds.height}`}
+          style={{ overflow: "visible" }}
+        >
+          <path
+            d={borderPath}
+            stroke={armyColor.border}
+            strokeWidth="3"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
 
       {/* 軍名ラベル - クリック可能 */}
       <div
@@ -244,6 +300,6 @@ export const ArmyBorder = memo(function ArmyBorder({
         {/* 軍名 */}
         <span>{army.name}</span>
       </div>
-    </div>
+    </>
   );
 });

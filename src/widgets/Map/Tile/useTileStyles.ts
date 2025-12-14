@@ -7,7 +7,6 @@ type UseTileStylesParams = {
   isSelected: boolean;
   isPlacementZone: boolean;
   isDropTarget: boolean;
-  isDraggingTroop: boolean;
   armyFormationMode: string;
   isVisible: boolean; // 視界内かどうか
 };
@@ -18,23 +17,12 @@ export function useTileStyles({
   isSelected,
   isPlacementZone,
   isDropTarget,
-  isDraggingTroop,
   armyFormationMode,
   isVisible,
 }: UseTileStylesParams): CSSProperties {
   return useMemo(() => {
-    // フィルター計算
-    let filter: string | undefined;
-    if (!isVisible) {
-      // 視界外の場合は暗くする
-      filter = "brightness(0.5)";
-    } else if (isMovableTile) {
-      filter = "brightness(1.4)";
-    } else if (isPlacementZone && isDropTarget) {
-      filter = "brightness(1.5)";
-    } else if (isPlacementZone && isDraggingTroop) {
-      filter = "brightness(1.2)";
-    }
+    // フィルター計算（GPU負荷軽減のためfilterプロパティは使用しない）
+    // 視界外の暗さはOpacityと背景色で表現
 
     // ボーダー計算
     let border: string;
@@ -83,12 +71,12 @@ export function useTileStyles({
 
     return {
       backgroundColor,
-      filter,
+      // filterプロパティは削除
       border,
       boxShadow,
       cursor,
       userSelect,
-      opacity: isVisible ? 1 : 0.8, // 視界外の場合は少し半透明
+      opacity: isVisible ? 1 : 0.4, // 視界外の場合は色を薄くする（背景色が透けて暗く見えることを期待）
     };
   }, [
     backgroundColor,
@@ -96,7 +84,6 @@ export function useTileStyles({
     isSelected,
     isPlacementZone,
     isDropTarget,
-    isDraggingTroop,
     armyFormationMode,
     isVisible,
   ]);
