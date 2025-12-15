@@ -7,17 +7,27 @@ import {
 } from "@/states/army";
 import { type PlacedTroop } from "@/lib/placement";
 import { Card, CardHeader, CardTitle, CardContent } from "@/designs/ui/card";
+import { shallowEqual } from "react-redux";
 import { Shield } from "lucide-react";
 
 // 軍カードコンポーネント
 function ArmyCard({ army }: { army: Army }) {
-  const placedTroops = useAppSelector((state) => state.army.playerTroops);
+  const { playerTroops, enemyTroops } = useAppSelector(
+    (state) => ({
+      playerTroops: state.army.playerTroops,
+      enemyTroops: state.army.enemyTroops,
+    }),
+    shallowEqual
+  );
 
   // 軍の色を取得
   const armyColor = ARMY_COLORS[army.color as unknown as ArmyColorKey];
 
+  // 全兵リストを結合
+  const allTroops = [...playerTroops, ...enemyTroops];
+
   // 軍内の兵を取得（army.positionsと一致するplacedTroops）
-  const troopsInArmy = placedTroops.filter((troop: PlacedTroop) =>
+  const troopsInArmy = allTroops.filter((troop: PlacedTroop) =>
     army.positions.some((pos) => pos.x === troop.x && pos.y === troop.y)
   );
 
@@ -163,28 +173,76 @@ function ArmyCard({ army }: { army: Army }) {
   );
 }
 
+// ... imports
+import { useMemo } from "react";
+// ...
+
+import { selectRevealedTiles } from "@/states/modules/visibility";
+
 export function ArmyPlacement() {
-  const armies = useAppSelector((state) => state.army.armies);
+  const { armies, playerTroops, phase } = useAppSelector(
+    (state) => ({
+      armies: state.army.armies,
+      playerTroops: state.army.playerTroops,
+      phase: state.battle.phase,
+    }),
+    shallowEqual
+  );
+
+  const visibleTileSet = useAppSelector(selectRevealedTiles);
+
+  // 表示する軍をフィルタリング
+  const visibleArmies = useMemo(() => {
+    // 準備フェーズは全て表示（あるいはルールによるが、とりあえず全て表示としておくか？ユーザ要望は「視界外の敵は非表示」なので、準備中でも見えないなら非表示が正しいかもだが、配置時はどうだろう。敵の配置は見えないはず。）
+    // バトル開始前（PREPARATION）でも敵の配置は見えないべきだが、デバッグや初期配置確認のためかもしれない。
+    // しかしユーザは「視界外の敵は非表示」と言っている。
+    // Tileコンポーネントでは PREPARATION の時は isVisible = true になっている。
+    // つまり準備フェーズは「全て視界内」という扱い。
+    // なのでここでも同様のロジックにする。
+    if (phase === "PREPARATION") return armies;
+
+    return armies.filter((army) => {
+      // プレイヤーの軍は常に表示
+      const isPlayerArmy = !army.id.startsWith("enemy-"); // 簡易判定。本来はID管理をしっかりすべきだが現状これで。
+      // あるいは色で判定？ army.color !== "PINK" ?
+      // データ構造上、敵軍かどうかはIDやリストで管理されているが、ここではarmiesリストしか持っていない。
+      // IDで判定するのが無難。enemyPlacement.tsでは "enemy-" 接頭辞を使っている。
+      // または、playerTroops に含まれる兵を持つ軍かどうか判定する。
+
+      // playerTroopsに含まれる兵を持つ軍ならプレイヤー軍
+      if (
+        playerTroops.some((pt) =>
+          army.positions.some((pos) => pos.x === pt.x && pos.y === pt.y)
+        )
+      )
+        return true;
+
+      // 敵軍の場合、視界内のマスに兵がいるかチェック
+      const isVisible = army.positions.some((pos) =>
+        visibleTileSet.has(`${pos.x},${pos.y}`)
+      );
+      return isVisible;
+    });
+  }, [armies, phase, visibleTileSet, playerTroops]);
 
   return (
     <div className="space-y-4">
-      {armies.length === 0 ? (
+      {visibleArmies.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-slate-400 text-sm">まだ軍が編成されていません</p>
-          <p className="text-slate-500 text-xs mt-2">
-            マップ上で兵を選択して軍を編成してください
-          </p>
+          <p className="text-slate-400 text-sm">表示可能な軍がありません</p>
         </div>
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-white">編成済み軍</h2>
-            <span className="text-sm text-slate-400">{armies.length} / 9</span>
+            <span className="text-sm text-slate-400">
+              {visibleArmies.length} / 9
+            </span>
           </div>
 
           {/* 軍カードのリスト */}
           <div className="space-y-3">
-            {armies.map((army: Army) => (
+            {visibleArmies.map((army: Army) => (
               <ArmyCard key={army.id} army={army} />
             ))}
           </div>

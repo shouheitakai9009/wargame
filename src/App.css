@@ -40,16 +40,16 @@
   --color-terrain-forest: oklch(56.84% 0.107 130.449);
 
   /* Scrollbar */
-// ... existing code ...
-    /* Dark Mode Terrain Colors */
-    --color-terrain-grass: oklch(58.84% 0.1 130.449);
-    --color-terrain-water: oklch(59.546% 0.12024 242.334);
-    --color-terrain-mountain-1: oklch(54.84% 0.047 56.365);
-    --color-terrain-mountain-2: oklch(48.18% 0.057 56.365);
-    --color-terrain-mountain-3: oklch(43.35% 0.063 56.365);
-    --color-terrain-forest: oklch(50.84% 0.107 130.449);
-  }
+  /* Dark Mode Terrain Colors */
+  --color-terrain-grass: oklch(58.84% 0.1 130.449);
+  --color-terrain-water: oklch(59.546% 0.12024 242.334);
+  --color-terrain-mountain-1: oklch(54.84% 0.047 56.365);
+  --color-terrain-mountain-2: oklch(48.18% 0.057 56.365);
+  --color-terrain-mountain-3: oklch(43.35% 0.063 56.365);
+  --color-terrain-forest: oklch(50.84% 0.107 130.449);
+}
 
+@layer base {
   * {
     @apply border-border;
   }

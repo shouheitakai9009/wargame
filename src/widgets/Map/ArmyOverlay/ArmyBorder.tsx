@@ -222,7 +222,7 @@ export const ArmyBorder = memo(function ArmyBorder({
     dispatch(
       openArmyPopover({
         positions: army.positions,
-        armyId: army.id,
+        existingArmy: army,
       })
     );
   };

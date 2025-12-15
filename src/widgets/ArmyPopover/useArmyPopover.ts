@@ -4,25 +4,45 @@ import { closeArmyPopover, updateArmyName } from "@/states/modules/ui";
 import { confirmArmy } from "@/states/modules/army";
 import { MAX_MORALE, MAX_TROOP_HEALTH } from "@/states/army";
 import type { PlacedTroop } from "@/lib/placement";
+import { enemyArmies } from "@/data/enemyPlacement";
 
 export function useArmyPopover() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.isArmyPopoverOpen);
   const editingArmy = useAppSelector((state) => state.ui.editingArmy);
-  const placedTroops = useAppSelector((state) => state.army.playerTroops);
+  const playerTroops = useAppSelector((state) => state.army.playerTroops);
+  const enemyTroops = useAppSelector((state) => state.army.enemyTroops);
 
-  const [localName, setLocalName] = useState(editingArmy?.name ?? "");
+  const [localName, setLocalName] = useState("");
+
+  // editingArmyが変わったらlocalNameを更新（ID変更時のみ）
+  const [currentArmyId, setCurrentArmyId] = useState<string | undefined>(
+    undefined
+  );
+
+  if (editingArmy?.id !== currentArmyId) {
+    setCurrentArmyId(editingArmy?.id);
+    setLocalName(editingArmy?.name ?? "");
+  }
+
+  // 敵軍かどうかを判定
+  const isEnemyArmy = useMemo(() => {
+    if (!editingArmy?.id) return false;
+    // 敵軍リストに含まれているIDかどうかチェック
+    return enemyArmies.some((enemy) => enemy.id === editingArmy.id);
+  }, [editingArmy]);
 
   // Derived state: Troops in the army
   const troopsInArmy = useMemo(() => {
     if (!editingArmy) return [];
-    return placedTroops.filter((troop: PlacedTroop) =>
+    const allTroops = [...playerTroops, ...enemyTroops];
+    return allTroops.filter((troop: PlacedTroop) =>
       editingArmy.positions.some(
         (pos: { x: number; y: number }) =>
           pos.x === troop.x && pos.y === troop.y
       )
     );
-  }, [editingArmy, placedTroops]);
+  }, [editingArmy, playerTroops, enemyTroops]);
 
   // Derived state: Health stats
   const armyStats = useMemo(() => {
@@ -101,5 +121,6 @@ export function useArmyPopover() {
     handleConfirm,
     handleCancel,
     MAX_MORALE,
+    isEnemyArmy,
   };
 }

@@ -24,6 +24,7 @@ export function ArmyPopover() {
     handleConfirm,
     handleCancel,
     MAX_MORALE,
+    isEnemyArmy,
   } = useArmyPopover();
 
   if (!editingArmy) return null;
@@ -136,29 +137,34 @@ export function ArmyPopover() {
                       value={localName}
                       onChange={(e) => setLocalName(e.target.value)}
                       placeholder="軍名を入力"
-                      className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner"
+                      className="flex-1 border border-blue-500/50 focus:border-blue-500 bg-slate-800/50 text-white font-medium placeholder:text-slate-400 shadow-inner disabled:cursor-not-allowed disabled:opacity-50"
                       style={{
                         boxShadow: "inset 0 0 10px rgba(59, 130, 246, 0.2)",
                       }}
-                      autoFocus
+                      autoFocus={!isEnemyArmy}
+                      readOnly={isEnemyArmy}
                     />
-                    <Button
-                      size="icon"
-                      onClick={handleConfirm}
-                      className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
-                      style={{
-                        boxShadow: "0 0 20px rgba(16, 185, 129, 0.5)",
-                      }}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      onClick={handleCancel}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    {!isEnemyArmy && (
+                      <>
+                        <Button
+                          size="icon"
+                          onClick={handleConfirm}
+                          className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+                          style={{
+                            boxShadow: "0 0 20px rgba(16, 185, 129, 0.5)",
+                          }}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          onClick={handleCancel}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
 

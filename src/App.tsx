@@ -6,6 +6,7 @@ import LandingPage from "./routes/LandingPage";
 import BattlePage from "./routes/BattlePage";
 import ErrorAlert from "./widgets/ErrorAlert";
 import { GlobalTroopTooltip } from "./widgets/GlobalTroopTooltip";
+import "./App.css";
 
 function App() {
   return (

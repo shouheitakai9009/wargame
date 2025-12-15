@@ -24,7 +24,6 @@ import { isValidPlacementZone } from "@/lib/placement";
 import type { SoldierType } from "@/states/soldier";
 import type { LucideIcon } from "lucide-react";
 import { Crown, Swords, Target, Shield, Flame } from "lucide-react";
-import { getTerrainEffect } from "@/lib/terrainEffect";
 import { useTileDrop } from "./useTileDrop";
 import { useTileStyles } from "./useTileStyles";
 
@@ -33,6 +32,7 @@ type Props = {
   y: number;
   terrain: Terrain;
   isSelected: boolean;
+  isVisible: boolean;
 };
 
 const TROOP_ICON_MAP: Record<SoldierType, LucideIcon> = {
@@ -43,34 +43,34 @@ const TROOP_ICON_MAP: Record<SoldierType, LucideIcon> = {
   CAVALRY: Flame,
 };
 
-export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
+export const Tile = memo(function Tile({
+  x,
+  y,
+  terrain,
+  isSelected,
+  isVisible,
+}: Props) {
   const dispatch = useAppDispatch();
 
   const {
     playerTroops,
     enemyTroops,
-    isDraggingTroop,
     armyFormationMode,
     selectionDragStart,
     battleMoveMode,
     movingArmyId,
     movableTiles,
     armies,
-    troopVisions,
-    phase,
   } = useAppSelector(
     (state) => ({
       playerTroops: state.army.playerTroops,
       enemyTroops: state.army.enemyTroops,
-      isDraggingTroop: state.army.isDraggingTroop,
       armyFormationMode: state.army.armyFormationMode,
       selectionDragStart: state.army.selectionDragStart,
       battleMoveMode: state.battle.battleMoveMode,
       movingArmyId: state.battle.movingArmyId,
       movableTiles: state.battle.movableTiles,
       armies: state.army.armies,
-      troopVisions: state.visibility.troopVisions,
-      phase: state.battle.phase,
     }),
     shallowEqual
   );
@@ -87,15 +87,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
   );
 
   // 自軍のいずれかの兵から見えるタイルかチェック
-  const isVisible = useMemo(() => {
-    // 準備フェーズは全て見える
-    if (phase === BATTLE_PHASE.PREPARATION) return true;
-
-    return playerTroops.some((troop) => {
-      const vision = troopVisions[troop.id];
-      return vision?.visibleTiles.includes(`${x},${y}`);
-    });
-  }, [playerTroops, troopVisions, x, y, phase]);
+  // isVisible logic removed (passed as prop)
 
   const isPlacementZone = useMemo(() => isValidPlacementZone(x, y), [x, y]);
 
@@ -143,18 +135,11 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
     isSelected,
     isPlacementZone,
     isDropTarget,
-    isDraggingTroop,
     armyFormationMode,
     isVisible,
   });
 
   const TroopIcon = troopOnTile ? TROOP_ICON_MAP[troopOnTile.type] : null;
-
-  // 地形効果の計算をメモ化
-  const terrainEffect = useMemo(
-    () => (troopOnTile ? getTerrainEffect(troopOnTile.type, terrain) : null),
-    [troopOnTile, terrain]
-  );
 
   // 矩形選択のマウスイベントハンドラー
   const handleMouseDown = useCallback(
@@ -266,6 +251,12 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
   const handleContextMenuOpen = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault(); // ブラウザデフォルトメニューを防止
+
+      // 敵兵がいる場合はメニューを開かない
+      if (troopOnTile && enemyTroops.some((t) => t.id === troopOnTile.id)) {
+        return;
+      }
+
       dispatch(
         openContextMenu({
           x: e.clientX,
@@ -275,7 +266,7 @@ export const Tile = memo(function Tile({ x, y, terrain, isSelected }: Props) {
         })
       );
     },
-    [dispatch, x, y]
+    [dispatch, x, y, troopOnTile, enemyTroops]
   );
 
   return (
