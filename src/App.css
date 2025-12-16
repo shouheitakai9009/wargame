@@ -131,12 +131,81 @@
 }
 
 /* 攻撃を受けるエフェクト: 早い脈動で赤く発光 */
-@keyframes under-attack-pulse {
+/* 射程オーバーレイ (絶対配置用) */
+.range-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5; /* タイルより上、ユニットより下？ユニットはz-indexどうなってる？ */
+}
+
+@keyframes breathing-bg-red {
   0%,
   100% {
-    opacity: 0;
+    background-color: rgba(220, 38, 38, 0.4);
   }
   50% {
-    opacity: 1;
+    background-color: rgba(220, 38, 38, 0.6);
   }
+}
+
+@keyframes breathing-bg-dark-red {
+  0%,
+  100% {
+    background-color: rgba(153, 27, 27, 0.5);
+  }
+  50% {
+    background-color: rgba(153, 27, 27, 0.7);
+  }
+}
+
+@keyframes breathing-bg-purple {
+  0%,
+  100% {
+    background-color: rgba(147, 51, 234, 0.5);
+  }
+  50% {
+    background-color: rgba(147, 51, 234, 0.7);
+  }
+}
+
+.range-overlay-player {
+  animation: breathing-bg-red 2s infinite ease-in-out;
+}
+
+.range-overlay-enemy {
+  animation: breathing-bg-dark-red 2s infinite ease-in-out;
+}
+
+.range-overlay-conflict {
+  animation: breathing-bg-purple 2s infinite ease-in-out;
+}
+
+/* 射程アイコン（攻撃アイコン）スタイル */
+.range-icon-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 6; /* overlay(5)より上 */
+}
+
+@keyframes icon-breathing {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.range-icon-anim {
+  animation: icon-breathing 2s infinite ease-in-out;
+  color: white; /* アイコンは白で抜く */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }

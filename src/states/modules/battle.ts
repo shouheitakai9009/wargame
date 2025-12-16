@@ -1,17 +1,25 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   BATTLE_PHASE,
   BATTLE_MOVE_MODE,
+  TURN_PHASE,
   type BattlePhase,
   type BattleMoveMode,
+  type TurnPhase,
 } from "../battle";
 import { calculateArmySpeed, calculateMovableTiles } from "@/lib/armyMovement";
-import type { Army } from "../army";
+import type { Army, ArmyDirection } from "../army";
 import type { PlacedTroop } from "@/lib/placement";
+import {
+  createSelector,
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
+import { calculateAttackHeatMap } from "@/lib/range";
 
 export type BattleState = {
   phase: BattlePhase;
   turn: number;
+  turnPhase: TurnPhase;
   battleMoveMode: BattleMoveMode;
   movingArmyId: string | null;
   movableTiles: Array<{ x: number; y: number }> | null;
@@ -20,6 +28,7 @@ export type BattleState = {
 export const initialBattleState: BattleState = {
   phase: BATTLE_PHASE.PREPARATION,
   turn: 0,
+  turnPhase: TURN_PHASE.PLAYER,
   battleMoveMode: BATTLE_MOVE_MODE.NONE,
   movingArmyId: null,
   movableTiles: null,
@@ -34,9 +43,19 @@ export const battleSlice = createSlice({
     startBattle: (state) => {
       state.phase = BATTLE_PHASE.BATTLE;
       state.turn = 1;
+      state.turnPhase = TURN_PHASE.PLAYER;
     },
+    endPlayerPhase: (state) => {
+      state.turnPhase = TURN_PHASE.ENEMY;
+    },
+    endEnemyPhase: (state) => {
+      state.turnPhase = TURN_PHASE.PLAYER;
+      state.turn += 1;
+    },
+    // 旧nextTurn互換（デバッグ用または強制ターン進行用）
     nextTurn: (state) => {
       state.turn += 1;
+      state.turnPhase = TURN_PHASE.PLAYER;
     },
     endBattle: (state) => {
       state.phase = BATTLE_PHASE.RESULT;
@@ -44,6 +63,7 @@ export const battleSlice = createSlice({
     finishBattle: (state) => {
       state.phase = initialBattleState.phase;
       state.turn = initialBattleState.turn;
+      state.turnPhase = initialBattleState.turnPhase;
     },
     switchBattleMoveMode: (
       state,
@@ -95,6 +115,8 @@ export const battleSlice = createSlice({
 
 export const {
   startBattle,
+  endPlayerPhase,
+  endEnemyPhase,
   nextTurn,
   endBattle,
   finishBattle,
@@ -103,3 +125,51 @@ export const {
 } = battleSlice.actions;
 
 export default battleSlice.reducer;
+
+// Selectors
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const selectPlayerTroops = (state: any) =>
+  state.army.playerTroops as PlacedTroop[];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const selectEnemyTroops = (state: any) =>
+  state.army.enemyTroops as PlacedTroop[];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const selectArmies = (state: any) => state.army.armies as Army[];
+
+import { selectRevealedTiles } from "./visibility";
+
+export const selectAttackRangeMap = createSelector(
+  [
+    selectPlayerTroops,
+    selectEnemyTroops,
+    selectArmies,
+    (state: any) => selectRevealedTiles(state),
+  ],
+  (playerTroops, enemyTroops, armies, revealedTiles) => {
+    // 敵軍は視界内のものだけを計算対象にする
+    const visibleEnemyTroops = enemyTroops.filter((t) =>
+      revealedTiles.has(`${t.x},${t.y}`)
+    );
+
+    const allTroops = [...playerTroops, ...visibleEnemyTroops];
+
+    // 座標ごとの軍の向きマップを作成
+    const posToDir = new Map<string, ArmyDirection>();
+    armies.forEach((army) => {
+      army.positions.forEach((pos) => {
+        posToDir.set(`${pos.x},${pos.y}`, army.direction);
+      });
+    });
+
+    // 各兵の向きを特定
+    const troopDirections: Record<string, ArmyDirection> = {};
+    allTroops.forEach((troop) => {
+      const dir = posToDir.get(`${troop.x},${troop.y}`);
+      if (dir) {
+        troopDirections[troop.id] = dir;
+      }
+    });
+
+    return calculateAttackHeatMap(allTroops, troopDirections);
+  }
+);

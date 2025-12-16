@@ -16,6 +16,7 @@ import {
   BATTLE_MOVE_MODE,
   MAP_EFFECT,
   BATTLE_PHASE,
+  TURN_PHASE,
 } from "@/states/battle";
 import { TERRAIN_COLORS } from "../../../designs/colors";
 import { TERRAIN_TYPE, type Terrain } from "../../../states/terrain";
@@ -33,6 +34,7 @@ type Props = {
   terrain: Terrain;
   isSelected: boolean;
   isVisible: boolean;
+  attackIntensity: { playerCount: number; enemyCount: number };
 };
 
 const TROOP_ICON_MAP: Record<SoldierType, LucideIcon> = {
@@ -49,6 +51,7 @@ export const Tile = memo(function Tile({
   terrain,
   isSelected,
   isVisible,
+  attackIntensity,
 }: Props) {
   const dispatch = useAppDispatch();
 
@@ -61,8 +64,10 @@ export const Tile = memo(function Tile({
     movingArmyId,
     movableTiles,
     armies,
+    turnPhase,
   } = useAppSelector(
     (state) => ({
+      turnPhase: state.battle.turnPhase,
       playerTroops: state.army.playerTroops,
       enemyTroops: state.army.enemyTroops,
       armyFormationMode: state.army.armyFormationMode,
@@ -128,6 +133,15 @@ export const Tile = memo(function Tile({
     }
   }, [terrain.type]);
 
+  // 占有状態判定
+  const isOccupiedByPlayer = useMemo(() => {
+    return !!troopOnTile && troopOnTile.id.startsWith("player-");
+  }, [troopOnTile]);
+
+  const isOccupiedByEnemy = useMemo(() => {
+    return !!troopOnTile && troopOnTile.id.startsWith("enemy-");
+  }, [troopOnTile]);
+
   // スタイル計算（カスタムフックで抽出）
   const tileStyles = useTileStyles({
     backgroundColor,
@@ -137,6 +151,9 @@ export const Tile = memo(function Tile({
     isDropTarget,
     armyFormationMode,
     isVisible,
+    attackIntensity,
+    isOccupiedByPlayer,
+    isOccupiedByEnemy,
   });
 
   const TroopIcon = troopOnTile ? TROOP_ICON_MAP[troopOnTile.type] : null;
@@ -171,7 +188,8 @@ export const Tile = memo(function Tile({
     }
 
     // 兵がいる場合はTooltipのホバー状態をセット
-    if (troopOnTile) {
+    // 視界外の場合は表示しない
+    if (troopOnTile && isVisible) {
       // 要素の位置を取得
       const rect = ref.current?.getBoundingClientRect();
       if (rect) {
@@ -190,7 +208,16 @@ export const Tile = memo(function Tile({
         );
       }
     }
-  }, [armyFormationMode, selectionDragStart, dispatch, x, y, troopOnTile, ref]);
+  }, [
+    armyFormationMode,
+    selectionDragStart,
+    dispatch,
+    x,
+    y,
+    troopOnTile,
+    ref,
+    isVisible,
+  ]);
 
   const handleMouseLeave = useCallback(() => {
     // ホバー状態を解除
@@ -252,6 +279,11 @@ export const Tile = memo(function Tile({
     (e: React.MouseEvent) => {
       e.preventDefault(); // ブラウザデフォルトメニューを防止
 
+      // 敵フェーズ中は操作不可
+      if (turnPhase === TURN_PHASE.ENEMY) {
+        return;
+      }
+
       // 敵兵がいる場合はメニューを開かない
       if (troopOnTile && enemyTroops.some((t) => t.id === troopOnTile.id)) {
         return;
@@ -266,8 +298,33 @@ export const Tile = memo(function Tile({
         })
       );
     },
-    [dispatch, x, y, troopOnTile, enemyTroops]
+    [dispatch, x, y, troopOnTile, enemyTroops, turnPhase]
   );
+
+  // 射程オーバーレイのクラス計算
+  let rangeOverlayClass = "";
+  // 敵の射程は「敵軍フェーズ」かつ「視界内」の場合のみ表示する
+  const showEnemyRange =
+    attackIntensity &&
+    attackIntensity.enemyCount > 0 &&
+    !isOccupiedByEnemy &&
+    isVisible &&
+    turnPhase === TURN_PHASE.ENEMY;
+
+  // 自軍の射程は「自軍フェーズ」の場合のみ表示する
+  const showPlayerRange =
+    attackIntensity &&
+    attackIntensity.playerCount > 0 &&
+    !isOccupiedByPlayer &&
+    turnPhase === TURN_PHASE.PLAYER;
+
+  if (showEnemyRange && showPlayerRange) {
+    rangeOverlayClass = "range-overlay-conflict";
+  } else if (showEnemyRange) {
+    rangeOverlayClass = "range-overlay-enemy";
+  } else if (showPlayerRange) {
+    rangeOverlayClass = "range-overlay-player";
+  }
 
   return (
     <div
@@ -287,9 +344,18 @@ export const Tile = memo(function Tile({
       data-x={x}
       data-y={y}
     >
+      {/* 射程オーバーレイ */}
+      {rangeOverlayClass && (
+        <>
+          <div className={`range-overlay ${rangeOverlayClass}`} />
+          <div className="range-icon-container">
+            <Swords size={20} className="range-icon-anim" strokeWidth={2.5} />
+          </div>
+        </>
+      )}
       {TroopIcon && troopOnTile && isVisible && (
         <div
-          className="w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
+          className="relative z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
           style={{
             backgroundColor: troopOnTile.theme.primary,
           }}

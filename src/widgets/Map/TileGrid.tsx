@@ -8,14 +8,17 @@ type Props = {
 };
 
 // ... imports
+// ... imports
 import { useAppSelector } from "@/states";
 import { selectRevealedTiles } from "@/states/modules/visibility";
+import { selectAttackRangeMap } from "@/states/modules/battle";
 import { BATTLE_PHASE } from "@/states/battle";
 
 // ...
 
 export const TileGrid = memo(function TileGrid({ selectedTiles }: Props) {
   const revealedTiles = useAppSelector(selectRevealedTiles);
+  const rangeMap = useAppSelector(selectAttackRangeMap);
   const phase = useAppSelector((state) => state.battle.phase);
 
   return (
@@ -29,6 +32,12 @@ export const TileGrid = memo(function TileGrid({ selectedTiles }: Props) {
         const isVisible =
           phase === BATTLE_PHASE.PREPARATION || revealedTiles.has(`${x},${y}`);
 
+        // 攻撃範囲情報 (存在しなければ 0)
+        const rangeInfo = rangeMap[`${x},${y}`] || {
+          playerCount: 0,
+          enemyCount: 0,
+        };
+
         return (
           <Tile
             key={`${x}-${y}`}
@@ -37,6 +46,7 @@ export const TileGrid = memo(function TileGrid({ selectedTiles }: Props) {
             terrain={terrain}
             isSelected={isSelected}
             isVisible={isVisible}
+            attackIntensity={rangeInfo}
           />
         );
       })}

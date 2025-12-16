@@ -9,8 +9,15 @@ export const BATTLE_PHASE = {
   RESULT: "RESULT", // 結果
 } as const;
 
-export type BattlePhase =
-  (typeof BATTLE_PHASE)[keyof typeof BATTLE_PHASE];
+export type BattlePhase = (typeof BATTLE_PHASE)[keyof typeof BATTLE_PHASE];
+
+// ターン内のフェーズ（手番）
+export const TURN_PHASE = {
+  PLAYER: "PLAYER", // 自軍フェーズ
+  ENEMY: "ENEMY", // 敵軍フェーズ
+} as const;
+
+export type TurnPhase = (typeof TURN_PHASE)[keyof typeof TURN_PHASE];
 
 // 準備中タブの種類
 export const PREPARATION_TAB = {
