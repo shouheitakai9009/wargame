@@ -97,12 +97,19 @@ export function useArmyPopover() {
   const handleConfirm = () => {
     if (!editingArmy) return;
     dispatch(updateArmyName(localName));
+
+    // IDがない場合はここで生成して渡す（これによりBattle側でIDを追跡可能にする）
+    const isCreation = !editingArmy.id;
+    const finalId = editingArmy.id ?? `army-${Date.now()}`;
+
     dispatch(
       confirmArmy({
         editingArmy: {
           ...editingArmy,
+          id: finalId,
           name: localName,
         },
+        isCreation,
       })
     );
   };

@@ -99,25 +99,28 @@ export const armySlice = createSlice({
           direction: string;
           positions: Array<{ x: number; y: number }>;
         };
+        isCreation?: boolean;
       }>
     ) => {
       const { editingArmy } = action.payload;
 
-      if (editingArmy.id) {
+      const existingArmyIndex = editingArmy.id
+        ? state.armies.findIndex((a) => a.id === editingArmy.id)
+        : -1;
+
+      if (existingArmyIndex !== -1) {
         // 更新
-        const existingArmyIndex = state.armies.findIndex(
-          (a) => a.id === editingArmy.id
-        );
-        if (existingArmyIndex !== -1) {
-          state.armies[existingArmyIndex] = {
-            ...state.armies[existingArmyIndex],
-            name: editingArmy.name,
-            morale: editingArmy.morale,
-            direction: editingArmy.direction as ArmyDirection,
-          };
-        }
+        state.armies[existingArmyIndex] = {
+          ...state.armies[existingArmyIndex],
+          name: editingArmy.name,
+          morale: editingArmy.morale,
+          direction: editingArmy.direction as ArmyDirection,
+        };
       } else {
         // 新規作成
+        // IDが渡されていない場合は自動生成
+        const newId = editingArmy.id ?? `army-${Date.now()}`;
+
         const usedColors = new Set(state.armies.map((army) => army.color));
         const availableColors = (
           Object.keys(ARMY_COLORS) as Array<keyof typeof ARMY_COLORS>
@@ -129,7 +132,7 @@ export const armySlice = createSlice({
             : (Object.keys(ARMY_COLORS)[0] as keyof typeof ARMY_COLORS);
 
         const newArmy: Army = {
-          id: `army-${Date.now()}`,
+          id: newId,
           name: editingArmy.name,
           morale: editingArmy.morale,
           direction: editingArmy.direction as ArmyDirection,

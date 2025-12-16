@@ -49,6 +49,7 @@ function MenuContent({
     (state) => state.army.armyFormationMode
   );
   const battleMoveMode = useAppSelector((state) => state.battle.battleMoveMode);
+  const actedArmyIds = useAppSelector((state) => state.battle.actedArmyIds);
 
   const { directionSubMenuOpen, setDirectionSubMenuOpen } = useMenuVisibility({
     dispatch,
@@ -77,6 +78,11 @@ function MenuContent({
       ),
     [armies, tile.x, tile.y]
   );
+
+  // 行動済みかどうか判定
+  const hasActed = useMemo(() => {
+    return belongingArmy ? actedArmyIds.includes(belongingArmy.id) : false;
+  }, [belongingArmy, actedArmyIds]);
 
   // 位置計算フックを使用
   const adjustedPosition = useContextMenuPosition(position);
@@ -131,9 +137,10 @@ function MenuContent({
         {/* 軍分割モード（軍に属している場合のみ） */}
         {belongingArmy && (
           <ContextMenuItem
-            label="軍分割モード"
+            label={hasActed ? "行動済み" : "軍分割モード"}
             onClick={() => handleMenuItemClick("軍分割モード")}
             checked={armyFormationMode === ARMY_FORMATION_MODE.SPLIT}
+            disabled={hasActed}
           />
         )}
 
@@ -150,8 +157,9 @@ function MenuContent({
         {/* 移動モード（バトルフェーズ＆軍に属している場合） */}
         {phase === BATTLE_PHASE.BATTLE && belongingArmy && (
           <ContextMenuItem
-            label="移動モード"
+            label={hasActed ? "行動済み" : "移動モード"}
             onClick={() => handleMenuItemClick("移動モード")}
+            disabled={hasActed}
           />
         )}
 

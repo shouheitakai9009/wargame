@@ -15,6 +15,7 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import { calculateAttackHeatMap } from "@/lib/range";
+import { moveArmyToTile, splitArmy, confirmArmy } from "./army";
 
 export type BattleState = {
   phase: BattlePhase;
@@ -23,6 +24,7 @@ export type BattleState = {
   battleMoveMode: BattleMoveMode;
   movingArmyId: string | null;
   movableTiles: Array<{ x: number; y: number }> | null;
+  actedArmyIds: string[]; // そのターンに行動済み（移動または分割）の軍ID
 };
 
 export const initialBattleState: BattleState = {
@@ -32,6 +34,7 @@ export const initialBattleState: BattleState = {
   battleMoveMode: BATTLE_MOVE_MODE.NONE,
   movingArmyId: null,
   movableTiles: null,
+  actedArmyIds: [],
 };
 
 // 循環依存を避けるため、必要なデータはPayloadで受け取る設計にする
@@ -44,6 +47,7 @@ export const battleSlice = createSlice({
       state.phase = BATTLE_PHASE.BATTLE;
       state.turn = 1;
       state.turnPhase = TURN_PHASE.PLAYER;
+      state.actedArmyIds = [];
     },
     endPlayerPhase: (state) => {
       state.turnPhase = TURN_PHASE.ENEMY;
@@ -51,11 +55,13 @@ export const battleSlice = createSlice({
     endEnemyPhase: (state) => {
       state.turnPhase = TURN_PHASE.PLAYER;
       state.turn += 1;
+      state.actedArmyIds = [];
     },
     // 旧nextTurn互換（デバッグ用または強制ターン進行用）
     nextTurn: (state) => {
       state.turn += 1;
       state.turnPhase = TURN_PHASE.PLAYER;
+      state.actedArmyIds = [];
     },
     endBattle: (state) => {
       state.phase = BATTLE_PHASE.RESULT;
@@ -64,6 +70,7 @@ export const battleSlice = createSlice({
       state.phase = initialBattleState.phase;
       state.turn = initialBattleState.turn;
       state.turnPhase = initialBattleState.turnPhase;
+      state.actedArmyIds = [];
     },
     switchBattleMoveMode: (
       state,
@@ -110,6 +117,32 @@ export const battleSlice = createSlice({
       state.movingArmyId = null;
       state.movableTiles = null;
     },
+  },
+  extraReducers: (builder) => {
+    // 兵が移動完了したら、その軍を行動済みリストに追加
+    builder.addCase(moveArmyToTile, (state, action) => {
+      if (!state.actedArmyIds.includes(action.payload.armyId)) {
+        state.actedArmyIds.push(action.payload.armyId);
+      }
+    });
+    // 軍分割完了したら、元の軍を行動済みリストに追加
+    builder.addCase(splitArmy, (state, action) => {
+      if (!state.actedArmyIds.includes(action.payload.originalArmyId)) {
+        state.actedArmyIds.push(action.payload.originalArmyId);
+      }
+    });
+    // バトルフェーズ中に新規作成された軍（分割など）は行動済みとする
+    builder.addCase(confirmArmy, (state, action) => {
+      if (
+        state.phase === BATTLE_PHASE.BATTLE &&
+        action.payload.isCreation &&
+        action.payload.editingArmy.id
+      ) {
+        if (!state.actedArmyIds.includes(action.payload.editingArmy.id)) {
+          state.actedArmyIds.push(action.payload.editingArmy.id);
+        }
+      }
+    });
   },
 });
 
