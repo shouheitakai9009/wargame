@@ -209,3 +209,86 @@
   color: white; /* アイコンは白で抜く */
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
+
+/* 攻撃エフェクトアニメーション */
+@keyframes attack-arrow {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: rotate(var(--angle)) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) scale(1);
+  }
+}
+
+@keyframes hit-ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes damage-popup {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    transform: translate(-50%, -70px) scale(1.2);
+    opacity: 1;
+  }
+  80% {
+    transform: translate(-50%, -90px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -110px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes tile-flash {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.6;
+  }
+  60% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-attack-arrow {
+  animation: attack-arrow 1s ease-out forwards;
+}
+
+.animate-hit-ripple {
+  animation: hit-ripple 0.8s ease-out forwards;
+}
+
+.animate-damage-popup {
+  animation: damage-popup 1.5s ease-out forwards;
+}
+
+.animate-tile-flash {
+  animation: tile-flash 1s ease-out forwards;
+}

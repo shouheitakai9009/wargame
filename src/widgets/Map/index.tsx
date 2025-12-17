@@ -23,6 +23,7 @@ import { validateArmySelection, validateArmySplit } from "@/lib/armyValidation";
 import { ArmyPopover } from "../ArmyPopover";
 import { ArmyOverlay } from "./ArmyOverlay";
 import { MapEffectOverlay } from "./MapEffectOverlay";
+import { AttackEffects } from "./AttackEffects";
 
 export const Map = memo(function Map() {
   const dispatch = useAppDispatch();
@@ -259,6 +260,8 @@ export const Map = memo(function Map() {
         <TileGrid selectedTiles={selectedTiles} />
         {/* 軍のオーバーレイ */}
         <ArmyOverlay />
+        {/* 攻撃エフェクト */}
+        <AttackEffects />
         <ArmyPopover />
       </div>
       <PlacementConstraints />

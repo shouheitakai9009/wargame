@@ -7,6 +7,7 @@ export type PlacedTroop = {
   y: number;
   type: SoldierType;
   hp: number;
+  isDead: boolean; // 撃破されたか
   theme: {
     primary: string;
     secondary: string;

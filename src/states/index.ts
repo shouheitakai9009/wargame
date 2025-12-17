@@ -8,6 +8,7 @@ import battleReducer from "./modules/battle";
 import armyReducer from "./modules/army";
 import mapReducer from "./modules/map";
 import visibilityReducer from "./modules/visibility";
+import combatReducer from "./modules/combat";
 import { useDispatch, useSelector } from "react-redux";
 
 const appReducer = combineReducers({
@@ -16,6 +17,7 @@ const appReducer = combineReducers({
   army: armyReducer,
   map: mapReducer,
   visibility: visibilityReducer,
+  combat: combatReducer,
 });
 
 type AppRootState = ReturnType<typeof appReducer>;

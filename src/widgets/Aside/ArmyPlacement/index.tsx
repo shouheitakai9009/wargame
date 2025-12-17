@@ -202,13 +202,6 @@ export function ArmyPlacement() {
     if (phase === "PREPARATION") return armies;
 
     return armies.filter((army) => {
-      // プレイヤーの軍は常に表示
-      const isPlayerArmy = !army.id.startsWith("enemy-"); // 簡易判定。本来はID管理をしっかりすべきだが現状これで。
-      // あるいは色で判定？ army.color !== "PINK" ?
-      // データ構造上、敵軍かどうかはIDやリストで管理されているが、ここではarmiesリストしか持っていない。
-      // IDで判定するのが無難。enemyPlacement.tsでは "enemy-" 接頭辞を使っている。
-      // または、playerTroops に含まれる兵を持つ軍かどうか判定する。
-
       // playerTroopsに含まれる兵を持つ軍ならプレイヤー軍
       if (
         playerTroops.some((pt) =>

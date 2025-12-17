@@ -1,7 +1,6 @@
 import {
   startBattle,
   finishBattle,
-  endPlayerPhase,
   endEnemyPhase,
   endBattle,
 } from "@/states/modules/battle";
@@ -10,6 +9,7 @@ import { useAppDispatch, useAppSelector } from "@/states";
 import { BATTLE_PHASE, TURN_PHASE } from "@/states/battle";
 import { Button } from "@/designs/ui/button";
 import { recalculateAllVisionsThunk } from "@/states/modules/visibility";
+import { executePlayerAttackPhaseThunk } from "@/states/modules/attackPhaseThunk";
 import { useMemo } from "react";
 
 export function Header() {
@@ -62,7 +62,8 @@ export function Header() {
 
   const handleTurnAction = () => {
     if (turnPhase === TURN_PHASE.PLAYER) {
-      dispatch(endPlayerPhase());
+      // 攻撃フェーズを実行してからターン終了
+      dispatch(executePlayerAttackPhaseThunk());
     } else {
       // AI実装までは手動で進める
       dispatch(endEnemyPhase());

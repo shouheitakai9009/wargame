@@ -117,6 +117,33 @@ export const battleSlice = createSlice({
       state.movingArmyId = null;
       state.movableTiles = null;
     },
+    // 勝利判定
+    checkVictoryCondition: (
+      state,
+      action: PayloadAction<{
+        enemyTroops: PlacedTroop[];
+      }>
+    ) => {
+      // 敵将軍のHP=0かチェック
+      const enemyGeneral = action.payload.enemyTroops.find(
+        (t) => t.type === "GENERAL" && t.id.startsWith("enemy-")
+      );
+
+      if (enemyGeneral?.isDead) {
+        state.phase = BATTLE_PHASE.RESULT;
+      }
+    },
+    // 行動済みに追加
+    markArmyAsActed: (
+      state,
+      action: PayloadAction<{
+        armyId: string;
+      }>
+    ) => {
+      if (!state.actedArmyIds.includes(action.payload.armyId)) {
+        state.actedArmyIds.push(action.payload.armyId);
+      }
+    },
   },
   extraReducers: (builder) => {
     // 兵が移動完了したら、その軍を行動済みリストに追加
@@ -155,6 +182,8 @@ export const {
   finishBattle,
   switchBattleMoveMode,
   resetBattleMoveMode,
+  checkVictoryCondition,
+  markArmyAsActed,
 } = battleSlice.actions;
 
 export default battleSlice.reducer;

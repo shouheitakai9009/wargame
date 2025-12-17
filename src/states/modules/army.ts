@@ -263,6 +263,35 @@ export const armySlice = createSlice({
         return troop;
       });
     },
+    updateTroopHp: (
+      state,
+      action: PayloadAction<{
+        troopId: string;
+        newHp: number;
+        isPlayer: boolean;
+      }>
+    ) => {
+      const troops = action.payload.isPlayer
+        ? state.playerTroops
+        : state.enemyTroops;
+      const troop = troops.find((t) => t.id === action.payload.troopId);
+      if (troop) {
+        troop.hp = Math.max(0, action.payload.newHp);
+        troop.isDead = troop.hp === 0;
+      }
+    },
+    updateArmyMorale: (
+      state,
+      action: PayloadAction<{
+        armyId: string;
+        newMorale: number;
+      }>
+    ) => {
+      const army = state.armies.find((a) => a.id === action.payload.armyId);
+      if (army) {
+        army.morale = Math.max(1, Math.min(3, action.payload.newMorale));
+      }
+    },
   },
   extraReducers: (builder) => {
     builder.addCase("battle/startBattle", (state) => {
@@ -292,6 +321,8 @@ export const {
   deleteArmy,
   changeArmyDirection,
   moveArmyToTile,
+  updateTroopHp,
+  updateArmyMorale,
 } = armySlice.actions;
 
 export default armySlice.reducer;

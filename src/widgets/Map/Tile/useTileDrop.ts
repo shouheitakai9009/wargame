@@ -84,7 +84,6 @@ export function useTileDrop({
           }
 
           // Place troop
-          // Place troop
           dispatch(
             placeTroop({
               id: crypto.randomUUID(), // 一意なIDを生成
@@ -92,6 +91,7 @@ export function useTileDrop({
               y,
               type: data.type,
               hp: 1000, // MAX_SOLDIER_HP
+              isDead: false,
               theme: data.theme,
             })
           );

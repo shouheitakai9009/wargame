@@ -16,6 +16,7 @@ const createTroop = (
     y,
     type,
     hp: 1000,
+    isDead: false,
     theme: stats.theme,
   };
 };

@@ -15,7 +15,6 @@ import {
   ARMY_FORMATION_MODE,
   BATTLE_MOVE_MODE,
   MAP_EFFECT,
-  BATTLE_PHASE,
   TURN_PHASE,
 } from "@/states/battle";
 import { TERRAIN_COLORS } from "../../../designs/colors";
